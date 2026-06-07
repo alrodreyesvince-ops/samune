@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>アルロッド サムネメーカー V2</title>
+<title>アルロッド サムネメーカー V3 AI Layout</title>
 <style>
 :root{
   --bg:#151515;--panel:#222;--line:#3a3a3a;--text:#fff;--muted:#bbb;
@@ -13,7 +13,7 @@
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Noto Sans JP","Yu Gothic",sans-serif}
 header{height:58px;padding:12px 18px;background:#202020;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
 h1{font-size:20px;margin:0}.badge{font-size:12px;background:#333;padding:4px 8px;border-radius:999px}
-main{height:calc(100vh - 58px);display:grid;grid-template-columns:380px 1fr;gap:14px;padding:14px}
+main{height:calc(100vh - 58px);display:grid;grid-template-columns:390px 1fr;gap:14px;padding:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
 .controls{overflow:auto}label{display:block;margin-top:13px;font-size:14px;font-weight:800}
 input,button,textarea,select{width:100%;margin-top:6px;padding:10px;border-radius:9px;border:1px solid #555;background:#111;color:white}
@@ -33,11 +33,13 @@ canvas{display:block;margin:24px auto;box-shadow:0 10px 30px rgba(0,0,0,.35);tra
 #thumbCanvas{background:#111}
 .templateButtons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .templateButtons button{background:#333;color:#fff}.templateButtons button.active{background:#ff9800;color:#111}
+.preset{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.preset button{background:#2b2b2b;color:#fff}
 @media(max-width:900px){main{grid-template-columns:1fr;height:auto}#stage{height:70vh}}
 </style>
 </head>
 <body>
-<header><h1>アルロッド サムネメーカー</h1><span class="badge">V2 / ストグラ切り抜き風</span></header>
+<header><h1>アルロッド サムネメーカー</h1><span class="badge">V3 / AIレイアウト風</span></header>
 
 <main>
 <section class="panel controls">
@@ -101,19 +103,26 @@ canvas{display:block;margin:24px auto;box-shadow:0 10px 30px rgba(0,0,0,.35);tra
     <label>6. 保存</label>
     <button id="download">透過PNG保存</button>
     <div id="status">画像を読み込んでください。</div>
-    <p class="hint"><span class="kbd">Ctrl</span>+<span class="kbd">Z</span> 戻る / <span class="kbd">Ctrl</span>+<span class="kbd">Y</span> 進む / <span class="kbd">E</span> 消しゴム / <span class="kbd">R</span> 復元</p>
   </div>
 
   <div id="thumbPanel" style="display:none">
     <label>1. 背景素材（複数選択可）</label>
     <input type="file" id="bgFiles" accept="image/*" multiple>
-    <small>1枚なら全面背景。複数なら右側に小窓配置します。</small>
 
     <label>2. キャラ素材・ロゴ素材（複数選択可）</label>
     <input type="file" id="assetFiles" accept="image/*" multiple>
-    <small>1枚目＝主役キャラ、2枚目以降＝ロゴなど。透過PNG推奨。</small>
+    <small>1枚目＝主役キャラ、最後の画像＝ロゴとして扱います。</small>
 
     <hr>
+    <label>内容カテゴリ</label>
+    <select id="contentType">
+      <option value="gang">抗争・ギャング</option>
+      <option value="newbie">新規住民紹介</option>
+      <option value="map">マップ考察・勢力図</option>
+      <option value="funny">面白シーン・ツッコミ</option>
+      <option value="police">警察・事件</option>
+    </select>
+
     <label>テキスト入力</label>
     <input id="smallText" placeholder="例：新規住民" value="新規住民">
     <input id="mainText" placeholder="例：オレンジギャング!?" value="オレンジギャング!?">
@@ -121,13 +130,22 @@ canvas{display:block;margin:24px auto;box-shadow:0 10px 30px rgba(0,0,0,.35);tra
     <input id="punchText" placeholder="例：抗争!" value="抗争!">
     <input id="nameText" placeholder="例：アル・ロドンドロン" value="アル・ロドンドロン">
 
-    <label>サムネテンプレ</label>
-    <div class="templateButtons">
-      <button id="tplGang" class="active">抗争・ギャング風</button>
-      <button id="tplSuspicious">不審者紹介風</button>
-      <button id="tplMap">勢力図・マップ風</button>
-      <button id="tplMeeting">会議・情報量多め</button>
+    <label>AIデザインプリセット</label>
+    <div class="preset">
+      <button id="presetBattle">抗争サムネ</button>
+      <button id="presetMap">勢力図サムネ</button>
+      <button id="presetIntro">紹介サムネ</button>
+      <button id="presetSuspicious">不審者サムネ</button>
     </div>
+
+    <label>テンプレ選択</label>
+    <select id="templateMode">
+      <option value="ai">AIに任せる</option>
+      <option value="battleA">抗争A：キャラ左・強調右</option>
+      <option value="mapA">マップA：背景重視・キャラ左</option>
+      <option value="introA">紹介A：キャラ大・名前下</option>
+      <option value="chaosA">カオスA：情報量多め</option>
+    </select>
 
     <label>色テーマ</label>
     <select id="colorTheme">
@@ -139,16 +157,18 @@ canvas{display:block;margin:24px auto;box-shadow:0 10px 30px rgba(0,0,0,.35);tra
     </select>
 
     <hr>
-    <label>自動補正</label>
-    <div class="checkRow"><input type="checkbox" id="thumbDark" checked><label for="thumbDark">背景を暗くして文字を見やすく</label></div>
+    <label>自動エフェクト</label>
+    <div class="checkRow"><input type="checkbox" id="autoCrop" checked><label for="autoCrop">キャラを大きく配置</label></div>
+    <div class="checkRow"><input type="checkbox" id="thumbDark" checked><label for="thumbDark">背景を暗くする</label></div>
     <div class="checkRow"><input type="checkbox" id="thumbBlur"><label for="thumbBlur">背景を少しぼかす</label></div>
     <div class="checkRow"><input type="checkbox" id="thumbVignette" checked><label for="thumbVignette">周辺を暗くする</label></div>
-    <div class="checkRow"><input type="checkbox" id="thumbSpeed" checked><label for="thumbSpeed">集中線を追加</label></div>
-    <div class="checkRow"><input type="checkbox" id="thumbInk" checked><label for="thumbInk">墨・ブラシエフェクトを追加</label></div>
+    <div class="checkRow"><input type="checkbox" id="thumbSpeed" checked><label for="thumbSpeed">集中線</label></div>
+    <div class="checkRow"><input type="checkbox" id="thumbInk" checked><label for="thumbInk">墨ブラシ</label></div>
+    <div class="checkRow"><input type="checkbox" id="thumbMarks" checked><label for="thumbMarks">矢印・丸囲み</label></div>
 
     <div class="row" style="margin-top:12px">
-      <button id="makeThumb">サムネ作成</button>
-      <button class="secondary" id="randomizeThumb">別パターン</button>
+      <button id="makeThumb">AIデザインで作成</button>
+      <button class="secondary" id="randomizeThumb">別デザイン</button>
     </div>
 
     <hr>
@@ -186,7 +206,10 @@ const canvas=$("canvas"), ctx=canvas.getContext("2d",{willReadFrequently:true}),
 const thumbCanvas=$("thumbCanvas"), tctx=thumbCanvas.getContext("2d");
 let loadedFile=null, loadedOriginal=null, restoreBase=null, cutoutBase=null, current=null;
 let history=[], redoStack=[], brushMode="erase", painting=false, previewTimer=null, renderMeta={pad:0,scale:1};
-let thumbSeed=0, thumbTemplate="gang";
+let thumbSeed=1;
+
+function rand(seed){let x=Math.sin(seed*9999)*10000;return x-Math.floor(x)}
+function pick(arr,n){return arr[Math.floor(rand(thumbSeed+n)*arr.length)]}
 
 function setActiveTool(name){
   const cut=name==="cut";
@@ -197,14 +220,10 @@ function setActiveTool(name){
 $("tabCut").onclick=()=>setActiveTool("cut");
 $("tabThumb").onclick=()=>setActiveTool("thumb");
 
-function setTpl(t){
-  thumbTemplate=t;
-  [["tplGang","gang"],["tplSuspicious","suspicious"],["tplMap","map"],["tplMeeting","meeting"]].forEach(([id,val])=>$(id).classList.toggle("active",val===t));
-}
-$("tplGang").onclick=()=>setTpl("gang");
-$("tplSuspicious").onclick=()=>setTpl("suspicious");
-$("tplMap").onclick=()=>setTpl("map");
-$("tplMeeting").onclick=()=>setTpl("meeting");
+$("presetBattle").onclick=()=>{ $("contentType").value="gang"; $("mainText").value="オレンジギャング!?"; $("subText").value="黄色ギャングと"; $("punchText").value="抗争!"; $("templateMode").value="battleA"; };
+$("presetMap").onclick=()=>{ $("contentType").value="map"; $("mainText").value="どのエリアを狙う?"; $("subText").value="まだ色んな色がある"; $("punchText").value="次はここ!?"; $("templateMode").value="mapA"; };
+$("presetIntro").onclick=()=>{ $("contentType").value="newbie"; $("mainText").value="新規住民"; $("subText").value="この男、何者?"; $("punchText").value="参戦!"; $("templateMode").value="introA"; };
+$("presetSuspicious").onclick=()=>{ $("contentType").value="funny"; $("mainText").value="完全不審者"; $("subText").value="見た目は怪しくても"; $("punchText").value="心は白市民"; $("templateMode").value="introA"; };
 
 function setStatus(t){statusEl.textContent=t;}
 function cloneImageData(d){return new ImageData(new Uint8ClampedArray(d.data),d.width,d.height);}
@@ -220,7 +239,6 @@ function setPreviewBackground(type){
   canvas.classList.toggle("canvasWhite", type==="white");
   $("bgTransparent").classList.toggle("modeOn", type==="transparent");
   $("bgWhite").classList.toggle("modeOn", type==="white");
-  setStatus(type==="white" ? "背景を真っ白表示にしました。保存PNGは透過のままです。" : "背景を透過チェック表示にしました。");
 }
 $("bgTransparent").onclick=()=>setPreviewBackground("transparent");
 $("bgWhite").onclick=()=>setPreviewBackground("white");
@@ -236,7 +254,7 @@ function undo(){if(!history.length)return;if(cutoutBase)redoStack.push(cloneImag
 function redo(){if(!redoStack.length)return;if(cutoutBase)history.push(cloneImageData(cutoutBase));cutoutBase=redoStack.pop();previewFx(true);setStatus("1つ進めました。");}
 $("undo").onclick=undo;$("redo").onclick=redo;
 
-function setMode(m){brushMode=m;$("eraseMode").classList.toggle("modeOn",m==="erase");$("restoreMode").classList.toggle("modeOn",m==="restore");setStatus(m==="erase"?"消しゴムモードです。":"復元ブラシモードです。");}
+function setMode(m){brushMode=m;$("eraseMode").classList.toggle("modeOn",m==="erase");$("restoreMode").classList.toggle("modeOn",m==="restore");}
 $("eraseMode").onclick=()=>setMode("erase"); $("restoreMode").onclick=()=>setMode("restore");
 window.addEventListener("keydown",e=>{
   const k=e.key.toLowerCase();
@@ -262,13 +280,13 @@ $("file").onchange=e=>{
   img.src=URL.createObjectURL(loadedFile);
 };
 
-$("resetToLoaded").onclick=()=>{if(!loadedOriginal)return;pushHistory();restoreBase=cloneImageData(loadedOriginal);cutoutBase=cloneImageData(loadedOriginal);previewFx(false);setStatus("元画像に戻しました。");};
+$("resetToLoaded").onclick=()=>{if(!loadedOriginal)return;pushHistory();restoreBase=cloneImageData(loadedOriginal);cutoutBase=cloneImageData(loadedOriginal);previewFx(false);};
 
 $("aiCut").onclick=async()=>{
   if(!loadedFile){alert("先に画像を読み込んでください。");return;}
-  pushHistory(); setStatus("AI背景削除の準備中... 初回は少し時間がかかります。");
+  pushHistory(); setStatus("AI背景削除の準備中...");
   try{
-    const removeBackground=await loadRemoveBg(); setStatus("AI背景削除中... しばらく待ってください。");
+    const removeBackground=await loadRemoveBg(); setStatus("AI背景削除中...");
     const blob=await removeBackground(loadedFile);
     const img=new Image();
     img.onload=()=>{
@@ -281,13 +299,12 @@ $("aiCut").onclick=async()=>{
         const tctx=temp.getContext("2d"); tctx.drawImage(origImg,0,0,temp.width,temp.height);
         restoreBase=tctx.getImageData(0,0,temp.width,temp.height);
         cutoutBase=cloneImageData(result); previewFx(false);
-        setStatus("AI背景削除完了。ブラシで調整後、必要なら白フチ/黒影にチェックを入れてください。");
+        setStatus("AI背景削除完了。");
       };
       origImg.src=URL.createObjectURL(loadedFile);
     };
-    img.onerror=()=>setStatus("AI背景削除後の画像表示に失敗しました。");
     img.src=URL.createObjectURL(blob);
-  }catch(err){console.error(err); setStatus("AI背景削除に失敗しました。GitHub PagesかLive Serverで開いてください。"); alert("AI背景削除に失敗しました。GitHub PagesかLive Serverで開いてください。");}
+  }catch(err){console.error(err); alert("AI背景削除に失敗しました。GitHub PagesかLive Serverで開いてください。");}
 };
 
 function createFxCanvas(base){
@@ -322,7 +339,6 @@ function previewFx(showStatus=true){
     ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(fx.canvas,0,0);
     current=ctx.getImageData(0,0,canvas.width,canvas.height);
     renderMeta={pad:fx.pad,scale:1};
-    if(showStatus)setStatus("仕上げ効果をプレビュー中です。");
   },30);
 }
 ["useOutline","useShadow","outline","shadow","shadowAlpha","shadowOffset"].forEach(id=>$(id).addEventListener("input",()=>{updateLabels();previewFx(true);}));
@@ -357,10 +373,9 @@ $("download").onclick=()=>{
   if(!cutoutBase){alert("先に画像を読み込んでください。");return;}
   const fx=createFxCanvas(cutoutBase);
   const a=document.createElement("a"); a.download="alrod_asset_cutout.png"; a.href=fx.canvas.toDataURL("image/png"); a.click();
-  setStatus("透過PNGを保存しました。");
 };
 
-// Thumbnail maker V2
+// Thumbnail V3
 async function readImages(input){
   const files=[...input.files];
   return await Promise.all(files.map(file=>new Promise((resolve,reject)=>{
@@ -392,200 +407,188 @@ function theme(){
   if(t==="white")return {a:"#fff",b:"#ffe600",c:"#ff2020",d:"#111"};
   return {a:"#ff9800",b:"#fff",c:"#ff2020",d:"#111"};
 }
+function decideLayout(){
+  let mode=$("templateMode").value;
+  const type=$("contentType").value;
+  if(mode!=="ai")return mode;
+  if(type==="map")return "mapA";
+  if(type==="newbie")return "introA";
+  if(type==="funny")return pick(["introA","chaosA"],1);
+  if(type==="police")return pick(["chaosA","battleA"],2);
+  return "battleA";
+}
 function drawVignette(c){
-  const g=c.createRadialGradient(640,360,180,640,360,780);
+  const g=c.createRadialGradient(640,360,160,640,360,820);
   g.addColorStop(0,"rgba(0,0,0,0)");
-  g.addColorStop(1,"rgba(0,0,0,.72)");
+  g.addColorStop(1,"rgba(0,0,0,.78)");
   c.fillStyle=g;c.fillRect(0,0,1280,720);
 }
-function drawSpeedLines(c){
-  c.save(); c.strokeStyle="rgba(255,255,255,.65)"; c.lineWidth=5;
-  for(let i=0;i<30;i++){
-    const side=i%4;
-    let x1,y1;
+function drawSpeedLines(c,focusX=650,focusY=360){
+  c.save(); c.strokeStyle="rgba(255,255,255,.72)"; c.lineWidth=5;
+  for(let i=0;i<42;i++){
+    const side=i%4; let x1,y1;
     if(side===0){x1=Math.random()*1280;y1=0}
     if(side===1){x1=1280;y1=Math.random()*720}
     if(side===2){x1=Math.random()*1280;y1=720}
     if(side===3){x1=0;y1=Math.random()*720}
-    c.beginPath(); c.moveTo(x1,y1); c.lineTo(640+(Math.random()-.5)*250,360+(Math.random()-.5)*160); c.stroke();
+    c.beginPath(); c.moveTo(x1,y1); c.lineTo(focusX+(Math.random()-.5)*250,focusY+(Math.random()-.5)*160); c.stroke();
   }
   c.restore();
 }
-function drawInk(c,x,y,w,h,alpha=.95){
-  c.save(); c.globalAlpha=alpha; c.fillStyle="#050505";
-  for(let i=0;i<22;i++){
-    const px=x+Math.random()*w, py=y+Math.random()*h;
-    const rw=50+Math.random()*180, rh=20+Math.random()*70;
+function drawInk(c,x,y,w,h,alpha=.95,angle=0){
+  c.save(); c.translate(x,y); c.rotate(angle*Math.PI/180); c.globalAlpha=alpha; c.fillStyle="#020202";
+  for(let i=0;i<24;i++){
+    const px=Math.random()*w, py=Math.random()*h;
+    const rw=40+Math.random()*150, rh=18+Math.random()*55;
     c.beginPath(); c.ellipse(px,py,rw,rh,Math.random()*Math.PI,0,Math.PI*2); c.fill();
   }
-  c.fillRect(x+w*.04,y+h*.25,w*.92,h*.5);
+  c.fillRect(w*.04,h*.23,w*.92,h*.52);
   c.restore();
 }
-function drawPaintSplash(c,color,x,y,scale=1){
-  c.save(); c.fillStyle=color; c.globalAlpha=.92;
-  for(let i=0;i<35;i++){
-    c.beginPath();
-    c.arc(x+(Math.random()-.5)*260*scale,y+(Math.random()-.5)*120*scale,4+Math.random()*22*scale,0,Math.PI*2);
-    c.fill();
-  }
+function drawSplash(c,color,x,y,scale=1){
+  c.save(); c.fillStyle=color; c.globalAlpha=.9;
+  for(let i=0;i<38;i++){c.beginPath();c.arc(x+(Math.random()-.5)*250*scale,y+(Math.random()-.5)*130*scale,4+Math.random()*20*scale,0,Math.PI*2);c.fill();}
   c.restore();
 }
-function drawTextStrong(c,text,x,y,maxW,maxSize,minSize,fill,stroke="#000",align="left",angle=0){
-  if(!text)return {w:0,h:0,size:0};
-  c.save();
-  c.translate(x,y); c.rotate(angle*Math.PI/180);
+function textSize(c,text,maxW,maxSize,minSize){
   let size=maxSize;
-  c.textAlign=align;c.textBaseline="top";
-  do{
-    c.font=`900 ${size}px "Noto Sans JP","Yu Gothic",sans-serif`;
-    if(c.measureText(text).width<=maxW)break;
-    size-=3;
-  }while(size>minSize);
+  do{c.font=`900 ${size}px "Impact","Noto Sans JP","Yu Gothic",sans-serif`;if(c.measureText(text).width<=maxW)break;size-=3;}while(size>minSize);
+  return size;
+}
+function drawText(c,text,x,y,maxW,maxSize,minSize,fill,stroke="#000",angle=0,align="left"){
+  if(!text)return {w:0,h:0};
+  c.save(); c.translate(x,y); c.rotate(angle*Math.PI/180); c.textAlign=align;c.textBaseline="top";
+  const size=textSize(c,text,maxW,maxSize,minSize);
+  c.font=`900 ${size}px "Impact","Noto Sans JP","Yu Gothic",sans-serif`;
   c.lineJoin="round";
-  c.strokeStyle=stroke;c.lineWidth=Math.max(12,Math.floor(size/5));c.strokeText(text,0,0);
+  c.strokeStyle=stroke;c.lineWidth=Math.max(14,Math.floor(size/4.8));c.strokeText(text,0,0);
   c.strokeStyle="#fff";c.lineWidth=Math.max(5,Math.floor(size/14));c.strokeText(text,0,0);
   c.fillStyle=fill;c.fillText(text,0,0);
   const w=c.measureText(text).width;
-  c.restore();
-  return {w,h:size,size};
+  c.restore(); return {w,h:size};
 }
-function drawTextBrush(c,text,x,y,maxW,maxSize,minSize,fill,angle=0){
+function drawBrushText(c,text,x,y,maxW,maxSize,minSize,fill,angle=-4){
   if(!text)return;
   c.save(); c.translate(x,y); c.rotate(angle*Math.PI/180);
-  let size=maxSize;
-  do{
-    c.font=`900 ${size}px "Noto Sans JP","Yu Gothic",sans-serif`;
-    if(c.measureText(text).width<=maxW)break;
-    size-=4;
-  }while(size>minSize);
+  const size=textSize(c,text,maxW,maxSize,minSize);
+  c.font=`900 ${size}px "Impact","Noto Sans JP","Yu Gothic",sans-serif`;
   const w=c.measureText(text).width;
-  drawInk(c,-25,-15,w+50,size+35,.95);
-  c.lineJoin="round"; c.textBaseline="top"; c.textAlign="left";
-  c.strokeStyle="#000"; c.lineWidth=Math.max(12,Math.floor(size/5)); c.strokeText(text,0,0);
-  c.strokeStyle="#fff"; c.lineWidth=Math.max(5,Math.floor(size/13)); c.strokeText(text,0,0);
-  c.fillStyle=fill; c.fillText(text,0,0);
+  drawInk(c,-35,-25,w+70,size+55,.96,0);
+  c.lineJoin="round";c.textAlign="left";c.textBaseline="top";
+  c.strokeStyle="#000";c.lineWidth=Math.max(16,Math.floor(size/4.5));c.strokeText(text,0,0);
+  c.strokeStyle="#fff";c.lineWidth=Math.max(6,Math.floor(size/12));c.strokeText(text,0,0);
+  c.fillStyle=fill;c.fillText(text,0,0);
   c.restore();
 }
 function drawLabel(c,text,x,y,w,h,bg,fg="#fff",angle=0){
   if(!text)return;
   c.save(); c.translate(x,y); c.rotate(angle*Math.PI/180);
-  c.shadowColor="rgba(0,0,0,.8)";c.shadowBlur=12;c.shadowOffsetX=5;c.shadowOffsetY=5;
+  c.shadowColor="rgba(0,0,0,.85)";c.shadowBlur=12;c.shadowOffsetX=5;c.shadowOffsetY=5;
   c.fillStyle=bg;c.strokeStyle="#fff";c.lineWidth=5;roundRect(c,0,0,w,h,12,true,true);
   c.shadowColor="transparent";
-  c.font=`900 ${Math.floor(h*.55)}px "Noto Sans JP","Yu Gothic",sans-serif`;
+  c.font=`900 ${Math.floor(h*.56)}px "Noto Sans JP","Yu Gothic",sans-serif`;
   c.textAlign="center";c.textBaseline="middle";
-  c.strokeStyle="#111";c.lineWidth=8;c.strokeText(text,w/2,h/2+1);
+  c.strokeStyle="#111";c.lineWidth=9;c.strokeText(text,w/2,h/2+1);
   c.fillStyle=fg;c.fillText(text,w/2,h/2+1);
   c.restore();
 }
-function drawBottomName(c,text){
+function drawBottomName(c,text,th){
   if(!text)return;
-  c.save();
-  drawInk(c,0,570,1280,155,.98);
-  c.fillStyle="#ff8500";c.fillRect(20,700,900,10);
-  drawTextStrong(c,text,45,595,920,82,40,"#fff","#000","left",0);
-  c.restore();
+  drawInk(c,0,570,1280,155,.99,0);
+  c.fillStyle=th.a;c.fillRect(25,700,900,10);
+  drawText(c,text,45,595,930,86,42,"#fff","#000",0);
 }
-function drawCharacter(c,img,mode){
+function drawCharacter(c,img,layout){
   if(!img)return;
-  c.save();
-  c.shadowColor="rgba(0,0,0,.85)"; c.shadowBlur=25; c.shadowOffsetX=10; c.shadowOffsetY=10;
-  if(mode==="left") containDraw(c,img,0,35,470,680);
-  if(mode==="center") containDraw(c,img,385,35,510,675);
-  if(mode==="smallLeft") containDraw(c,img,20,230,360,460);
+  c.save(); c.shadowColor="rgba(0,0,0,.9)"; c.shadowBlur=28; c.shadowOffsetX=12; c.shadowOffsetY=12;
+  if(layout==="battleA") containDraw(c,img,-10,15,500,710);
+  else if(layout==="mapA") containDraw(c,img,20,245,350,445);
+  else if(layout==="introA") containDraw(c,img,345,20,560,700);
+  else containDraw(c,img,0,80,450,640);
   c.restore();
 }
-function drawLogoAssets(c,assets){
+function drawLogo(c,assets){
   if(assets.length<=1)return;
   const logo=assets[assets.length-1].img;
-  c.save(); c.shadowColor="rgba(0,0,0,.85)"; c.shadowBlur=18;
-  containDraw(c,logo,1030,535,220,160);
+  c.save(); c.shadowColor="rgba(0,0,0,.9)";c.shadowBlur=20;
+  containDraw(c,logo,1030,535,225,165);
   c.restore();
-  for(let i=1;i<assets.length-1;i++){
-    containDraw(c,assets[i].img,1050-(i-1)*135,30,120,120);
-  }
+}
+function drawArrow(c,x1,y1,x2,y2,color){
+  c.save(); c.strokeStyle=color;c.fillStyle=color;c.lineWidth=14;c.lineCap="round";
+  c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();
+  const a=Math.atan2(y2-y1,x2-x1);
+  c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-35*Math.cos(a-.5),y2-35*Math.sin(a-.5));c.lineTo(x2-35*Math.cos(a+.5),y2-35*Math.sin(a+.5));c.closePath();c.fill();
+  c.strokeStyle="#fff";c.lineWidth=5;c.stroke();
+  c.restore();
+}
+function drawCircle(c,x,y,r,color){
+  c.save(); c.strokeStyle="#fff";c.lineWidth=18;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.stroke();
+  c.strokeStyle=color;c.lineWidth=12;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.stroke();
+  c.restore();
 }
 async function makeThumbnail(){
   const bgs=await readImages($("bgFiles"));
   const assets=await readImages($("assetFiles"));
   if(!bgs.length){alert("背景素材を読み込んでください。");return;}
-  const th=theme();
-  const main=$("mainText").value.trim();
-  const sub=$("subText").value.trim();
-  const punch=$("punchText").value.trim();
-  const small=$("smallText").value.trim();
-  const name=$("nameText").value.trim();
+  const th=theme(), layout=decideLayout();
+  const main=$("mainText").value.trim(), sub=$("subText").value.trim(), punch=$("punchText").value.trim(), small=$("smallText").value.trim(), name=$("nameText").value.trim();
 
   tctx.clearRect(0,0,1280,720);
   if($("thumbBlur").checked){tctx.save();tctx.filter="blur(2px)";coverDraw(tctx,bgs[0].img,-8,-8,1296,736);tctx.restore();}
   else coverDraw(tctx,bgs[0].img,0,0,1280,720);
 
+  if($("thumbDark").checked){tctx.fillStyle="rgba(0,0,0,.30)";tctx.fillRect(0,0,1280,720);}
   if(bgs.length>1){
-    tctx.save(); tctx.globalAlpha=.58;
-    for(let i=1;i<Math.min(bgs.length,4);i++){
-      const w=340,h=190,x=900,y=30+(i-1)*205;
-      tctx.fillStyle="rgba(0,0,0,.8)";roundRect(tctx,x-8,y-8,w+16,h+16,15,true,false);
-      coverDraw(tctx,bgs[i].img,x,y,w,h);
-    }
+    tctx.save(); tctx.globalAlpha=.65;
+    for(let i=1;i<Math.min(bgs.length,4);i++){const w=320,h=180,x=920,y=30+(i-1)*195;tctx.fillStyle="#000";roundRect(tctx,x-8,y-8,w+16,h+16,14,true,false);coverDraw(tctx,bgs[i].img,x,y,w,h);}
     tctx.restore();
   }
-  if($("thumbDark").checked){tctx.fillStyle="rgba(0,0,0,.32)";tctx.fillRect(0,0,1280,720);}
   if($("thumbVignette").checked)drawVignette(tctx);
-  if($("thumbSpeed").checked)drawSpeedLines(tctx);
+  if($("thumbSpeed").checked)drawSpeedLines(tctx, layout==="introA"?640:760,360);
+  if($("thumbInk").checked){drawSplash(tctx,th.a,layout==="mapA"?760:470,layout==="mapA"?330:115,1.15);}
 
-  if(thumbTemplate==="gang"){
-    if($("thumbInk").checked){drawInk(tctx,270,20,620,165,.92);drawInk(tctx,210,430,820,160,.96);}
-    drawCharacter(tctx,assets[0]?.img,"left");
+  drawCharacter(tctx,assets[0]?.img,layout);
+
+  if(layout==="battleA"){
+    if($("thumbInk").checked){drawInk(tctx,255,15,645,170,.96,-5);drawInk(tctx,225,440,690,135,.96,0);}
+    drawBrushText(tctx,main,300,45,580,106,56,th.a,-6);
+    drawText(tctx,sub,250,440,640,86,44,th.a==="#ffe600"?"#ffe600":th.b,"#000",-2);
+    drawText(tctx,punch,780,405,430,138,74,th.c,"#000",0);
     drawLabel(tctx,small,965,35,255,70,th.a, th.b, 0);
-    drawTextBrush(tctx,main,300,40,560,105,55,th.a,-7);
-    drawTextStrong(tctx,sub,250,440,640,88,45,th.c==="#ff2020"?th.b:th.a,"#000","left",-2);
-    drawTextStrong(tctx,punch,780,405,430,138,70,th.c,"#000","left",0);
-    drawBottomName(tctx,name);
-  }else if(thumbTemplate==="suspicious"){
-    if($("thumbInk").checked){drawInk(tctx,30,45,400,100,.96);drawInk(tctx,820,300,330,140,.96);}
-    drawCharacter(tctx,assets[0]?.img,"center");
-    drawTextBrush(tctx,main,45,55,390,85,48,th.c,-3);
-    drawLabel(tctx,small,830,45,360,70,th.a, th.d);
-    drawTextStrong(tctx,sub,820,335,360,70,34,th.b,"#000","left",0);
-    drawTextStrong(tctx,punch,820,405,390,108,60,th.a,"#000","left",0);
-    drawBottomName(tctx,name);
-  }else if(thumbTemplate==="map"){
-    if($("thumbInk").checked){drawInk(tctx,260,25,780,115,.95);drawInk(tctx,180,525,930,160,.96);}
-    drawCharacter(tctx,assets[0]?.img,"smallLeft");
-    drawLabel(tctx,small,35,35,255,70,th.a, th.b);
-    drawTextBrush(tctx,sub,315,50,760,78,40,th.b,0);
-    drawTextStrong(tctx,main,190,535,830,98,52,th.a,"#000","left",0);
-    drawTextStrong(tctx,punch,850,535,360,118,58,th.c,"#000","left",0);
-    drawPaintSplash(tctx,th.a,770,330,1.0);
-    tctx.strokeStyle=th.c;tctx.lineWidth=14;tctx.beginPath();tctx.arc(790,330,80,0,Math.PI*2);tctx.stroke();
+    drawBottomName(tctx,name,th);
+  }else if(layout==="mapA"){
+    if($("thumbInk").checked){drawInk(tctx,315,30,790,120,.96,0);drawInk(tctx,170,525,900,150,.96,0);}
+    drawLabel(tctx,small,35,35,260,70,th.a,th.b);
+    drawBrushText(tctx,sub,325,55,750,72,38,th.b,0);
+    drawText(tctx,main,175,535,780,98,52,th.a,"#000",0);
+    drawText(tctx,punch,820,535,385,110,58,th.c,"#000",0);
+    if($("thumbMarks").checked){drawCircle(tctx,780,335,85,th.c);drawArrow(tctx,565,445,725,365,th.a);}
+    drawText(tctx,name,40,635,460,48,28,"#fff","#000",0);
+  }else if(layout==="introA"){
+    if($("thumbInk").checked){drawInk(tctx,35,45,410,115,.96,-3);drawInk(tctx,810,305,380,145,.96,0);}
+    drawBrushText(tctx,main,45,60,420,84,46,th.c,-3);
+    drawLabel(tctx,small,830,45,360,70,th.a,th.d);
+    drawText(tctx,sub,815,335,370,70,34,th.b,"#000",0);
+    drawText(tctx,punch,810,405,400,108,60,th.a,"#000",0);
+    drawBottomName(tctx,name,th);
   }else{
-    if($("thumbInk").checked){drawInk(tctx,350,35,520,120,.94);drawInk(tctx,40,485,1180,180,.98);}
-    drawCharacter(tctx,assets[0]?.img,"left");
+    if($("thumbInk").checked){drawInk(tctx,330,35,590,125,.96,-2);drawInk(tctx,40,485,1180,180,.98,0);}
     drawLabel(tctx,small,930,40,260,70,th.a,th.b);
-    drawTextBrush(tctx,main,365,55,520,88,45,th.a,-2);
-    drawTextStrong(tctx,sub,425,450,530,72,38,th.b,"#000","left",0);
-    drawTextStrong(tctx,punch,780,420,420,122,64,th.c,"#000","left",0);
-    drawBottomName(tctx,name);
+    drawBrushText(tctx,main,365,55,570,88,45,th.a,-2);
+    drawText(tctx,sub,430,450,540,72,38,th.b,"#000",0);
+    drawText(tctx,punch,780,420,420,122,64,th.c,"#000",0);
+    drawBottomName(tctx,name,th);
   }
 
-  drawLogoAssets(tctx,assets);
+  drawLogo(tctx,assets);
+  tctx.save();tctx.strokeStyle=th.a;tctx.lineWidth=6;tctx.strokeRect(3,3,1274,714);tctx.strokeStyle="#111";tctx.lineWidth=2;tctx.strokeRect(9,9,1262,702);tctx.restore();
 
-  // thin orange border
-  tctx.save();
-  tctx.strokeStyle=th.a;tctx.lineWidth=6;tctx.strokeRect(3,3,1274,714);
-  tctx.strokeStyle="#111";tctx.lineWidth=2;tctx.strokeRect(9,9,1262,702);
-  tctx.restore();
-
-  $("thumbStatus").textContent="ストグラ風サムネを作成しました。テンプレや色テーマを変えて再生成できます。";
+  $("thumbStatus").textContent="AIレイアウト風サムネを作成しました。別デザインも試してください。";
 }
 $("makeThumb").onclick=makeThumbnail;
-$("randomizeThumb").onclick=()=>{thumbSeed++;const arr=["gang","suspicious","map","meeting"];setTpl(arr[thumbSeed%arr.length]);makeThumbnail();};
-$("downloadThumb").onclick=()=>{
-  const a=document.createElement("a");
-  a.download="alrod_thumbnail_v2.png";
-  a.href=thumbCanvas.toDataURL("image/png");
-  a.click();
-};
+$("randomizeThumb").onclick=()=>{thumbSeed++;makeThumbnail();};
+$("downloadThumb").onclick=()=>{const a=document.createElement("a");a.download="alrod_thumbnail_v3.png";a.href=thumbCanvas.toDataURL("image/png");a.click();};
 </script>
 </body>
 </html>
