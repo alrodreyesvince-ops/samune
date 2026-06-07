@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>サムネ用キャラ切り抜きツール</title>
+<title>AIキャラ切り抜きツール</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#181818;color:white;font-family:"Noto Sans JP",system-ui,sans-serif}
-header{padding:14px 18px;background:#242424;border-bottom:1px solid #333}
+body{margin:0;background:#181818;color:#fff;font-family:system-ui,"Noto Sans JP",sans-serif}
+header{padding:14px 18px;background:#252525;border-bottom:1px solid #333}
 h1{font-size:20px;margin:0}
 main{display:grid;grid-template-columns:320px 1fr;gap:14px;padding:14px}
-.panel{background:#232323;border:1px solid #383838;border-radius:12px;padding:14px}
+.panel{background:#242424;border:1px solid #3a3a3a;border-radius:12px;padding:14px}
 label{display:block;margin-top:12px;font-weight:800}
-input,select,button{width:100%;margin-top:6px;padding:10px;border-radius:8px;border:1px solid #555;background:#111;color:white}
-button{border:0;background:#ff9800;color:#111;font-weight:900;cursor:pointer}
-button.sub{background:#444;color:white}
-button.red{background:#d93025;color:white}
+input,button{width:100%;margin-top:6px;padding:10px;border-radius:8px;border:1px solid #555;background:#111;color:#fff}
+button{background:#ff9800;color:#111;border:0;font-weight:900;cursor:pointer}
+button.sub{background:#444;color:#fff}
+button.red{background:#d93025;color:#fff}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 small{color:#bbb;line-height:1.6}
+#status{margin-top:10px;color:#ffd27a;font-weight:800}
 #stage{overflow:auto;min-height:72vh}
 canvas{display:block;margin:12px auto;background:
 linear-gradient(45deg,#777 25%,transparent 25%),
@@ -28,51 +29,47 @@ background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
 </style>
 </head>
 <body>
-<header><h1>サムネ用キャラ切り抜きツール</h1></header>
+<header>
+<h1>AIキャラ切り抜きツール</h1>
+</header>
 
 <main>
 <section class="panel">
 <label>画像読み込み</label>
 <input type="file" id="file" accept="image/*">
 
-<label>編集モード</label>
-<select id="mode">
-<option value="erase">消しゴム：背景を消す</option>
-<option value="restore">復元ブラシ：キャラを戻す</option>
-<option value="magic">近い色をまとめて消す</option>
-</select>
+<button id="aiCut">AI背景削除</button>
+
+<label>復元ブラシ / 消しゴム</label>
+<div class="row">
+<button class="sub" id="eraseMode">消す</button>
+<button class="sub" id="restoreMode">戻す</button>
+</div>
 
 <label>ブラシサイズ</label>
 <input type="range" id="brush" min="5" max="140" value="35">
-<small>現在：<span id="brushText">35</span>px</small>
-
-<label>自動削除の強さ</label>
-<input type="range" id="autoTol" min="10" max="130" value="45">
-
-<label>近い色を消す強さ</label>
-<input type="range" id="magicTol" min="5" max="130" value="38">
 
 <label>白フチサイズ</label>
-<input type="range" id="outline" min="0" max="60" value="24">
+<input type="range" id="outline" min="0" max="70" value="28">
 
 <label>黒影サイズ</label>
-<input type="range" id="shadow" min="0" max="50" value="18">
+<input type="range" id="shadow" min="0" max="60" value="20">
 
 <div class="row" style="margin-top:12px">
-<button id="autoRemove">背景を自動削除</button>
+<button id="applyFx">白フチ＋黒影</button>
 <button class="sub" id="undo">1つ戻す</button>
 </div>
 
-<div class="row" style="margin-top:8px">
-<button id="applyFx">白フチ＋影</button>
 <button class="red" id="reset">リセット</button>
-</div>
 
 <label>保存</label>
 <button id="download">透過PNG保存</button>
 
+<div id="status">画像を読み込んでください</div>
+
 <p><small>
-画像を読み込む → 背景を自動削除 → 消えすぎた所は復元ブラシ → 残った背景は消しゴム/近い色で削除 → 白フチ＋影 → 透過PNG保存。
+初回のAI背景削除はモデル読み込みで少し時間がかかります。  
+キャラが少し欠けたら「戻す」、余計な部分が残ったら「消す」で調整してください。
 </small></p>
 </section>
 
@@ -81,219 +78,216 @@ background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
 </section>
 </main>
 
-<script>
+<script type="module">
+import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.mjs";
+
 const file=document.getElementById("file");
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d",{willReadFrequently:true});
-const mode=document.getElementById("mode");
-const brush=document.getElementById("brush");
-const autoTol=document.getElementById("autoTol");
-const magicTol=document.getElementById("magicTol");
-const outline=document.getElementById("outline");
-const shadow=document.getElementById("shadow");
-const brushText=document.getElementById("brushText");
+const statusEl=document.getElementById("status");
 
-let original=null,current=null,history=[],painting=false;
+let original=null;
+let current=null;
+let history=[];
+let mode="erase";
+let painting=false;
 
-brush.oninput=()=>brushText.textContent=brush.value;
+function setStatus(t){statusEl.textContent=t}
 
 file.onchange=e=>{
- const f=e.target.files[0]; if(!f)return;
- const img=new Image();
- img.onload=()=>{
-   const max=1600, scale=Math.min(1,max/img.width);
-   canvas.width=Math.round(img.width*scale);
-   canvas.height=Math.round(img.height*scale);
-   ctx.clearRect(0,0,canvas.width,canvas.height);
-   ctx.drawImage(img,0,0,canvas.width,canvas.height);
-   original=ctx.getImageData(0,0,canvas.width,canvas.height);
-   current=ctx.getImageData(0,0,canvas.width,canvas.height);
-   history=[];
- };
- img.src=URL.createObjectURL(f);
+  const f=e.target.files[0];
+  if(!f)return;
+
+  const img=new Image();
+  img.onload=()=>{
+    const max=1800;
+    const scale=Math.min(1,max/img.width);
+    canvas.width=Math.round(img.width*scale);
+    canvas.height=Math.round(img.height*scale);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+
+    original=ctx.getImageData(0,0,canvas.width,canvas.height);
+    current=ctx.getImageData(0,0,canvas.width,canvas.height);
+    history=[];
+    setStatus("画像読み込み完了。AI背景削除を押してください。");
+  };
+  img.src=URL.createObjectURL(f);
 };
 
 function save(){
- if(!current)return;
- history.push(new ImageData(new Uint8ClampedArray(current.data),current.width,current.height));
- if(history.length>30)history.shift();
+  if(!current)return;
+  history.push(new ImageData(new Uint8ClampedArray(current.data),current.width,current.height));
+  if(history.length>30)history.shift();
 }
 
-function draw(){ctx.putImageData(current,0,0)}
+function draw(){
+  ctx.putImageData(current,0,0);
+}
+
+document.getElementById("aiCut").onclick=async()=>{
+  const f=file.files[0];
+  if(!f){
+    alert("先に画像を読み込んでください");
+    return;
+  }
+
+  save();
+  setStatus("AI背景削除中... 初回は時間がかかります");
+
+  try{
+    const blob=await removeBackground(f);
+    const img=new Image();
+    img.onload=()=>{
+      canvas.width=img.width;
+      canvas.height=img.height;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0);
+
+      current=ctx.getImageData(0,0,canvas.width,canvas.height);
+      original=new ImageData(new Uint8ClampedArray(current.data),current.width,current.height);
+      setStatus("AI背景削除完了。必要ならブラシで微調整してください。");
+    };
+    img.src=URL.createObjectURL(blob);
+  }catch(err){
+    console.error(err);
+    setStatus("AI背景削除に失敗しました。ネット接続かブラウザを確認してください。");
+  }
+};
+
+document.getElementById("eraseMode").onclick=()=>{mode="erase";setStatus("消しゴムモード")};
+document.getElementById("restoreMode").onclick=()=>{mode="restore";setStatus("復元ブラシモード")};
 
 function pos(e){
- const r=canvas.getBoundingClientRect();
- return {
-   x:Math.floor((e.clientX-r.left)*canvas.width/r.width),
-   y:Math.floor((e.clientY-r.top)*canvas.height/r.height)
- };
+  const r=canvas.getBoundingClientRect();
+  return {
+    x:Math.floor((e.clientX-r.left)*canvas.width/r.width),
+    y:Math.floor((e.clientY-r.top)*canvas.height/r.height)
+  };
 }
 
-function dist(data,i,r,g,b){
- return Math.abs(data[i]-r)+Math.abs(data[i+1]-g)+Math.abs(data[i+2]-b);
-}
+function paint(x,y){
+  if(!current||!original)return;
+  const size=Number(document.getElementById("brush").value);
+  const w=canvas.width,h=canvas.height;
+  const d=current.data,o=original.data;
 
-function autoBackgroundRemove(){
- if(!current)return; save();
- const w=canvas.width,h=canvas.height,d=current.data,tol=Number(autoTol.value)*3;
- const seen=new Uint8Array(w*h), q=[];
+  for(let yy=y-size;yy<=y+size;yy++){
+    if(yy<0||yy>=h)continue;
+    for(let xx=x-size;xx<=x+size;xx++){
+      if(xx<0||xx>=w)continue;
+      if((xx-x)**2+(yy-y)**2>size*size)continue;
+      const i=(yy*w+xx)*4;
 
- function push(x,y,r,g,b){
-   if(x<0||y<0||x>=w||y>=h)return;
-   const p=y*w+x;if(seen[p])return;
-   const i=p*4;
-   if(dist(d,i,r,g,b)<=tol){seen[p]=1;q.push([x,y,r,g,b]);}
- }
-
- for(let x=0;x<w;x+=6){
-   let i=x*4; push(x,0,d[i],d[i+1],d[i+2]);
-   i=((h-1)*w+x)*4; push(x,h-1,d[i],d[i+1],d[i+2]);
- }
- for(let y=0;y<h;y+=6){
-   let i=(y*w)*4; push(0,y,d[i],d[i+1],d[i+2]);
-   i=(y*w+w-1)*4; push(w-1,y,d[i],d[i+1],d[i+2]);
- }
-
- while(q.length){
-   const [x,y,r,g,b]=q.shift();
-   d[(y*w+x)*4+3]=0;
-   push(x+1,y,r,g,b);
-   push(x-1,y,r,g,b);
-   push(x,y+1,r,g,b);
-   push(x,y-1,r,g,b);
- }
- draw();
-}
-
-function paint(x,y,restore){
- const w=canvas.width,h=canvas.height,d=current.data,o=original.data,r=Number(brush.value);
-
- for(let yy=y-r;yy<=y+r;yy++){
-  if(yy<0||yy>=h)continue;
-  for(let xx=x-r;xx<=x+r;xx++){
-   if(xx<0||xx>=w)continue;
-   if((xx-x)**2+(yy-y)**2>r*r)continue;
-   const i=(yy*w+xx)*4;
-   if(restore){
-     d[i]=o[i];d[i+1]=o[i+1];d[i+2]=o[i+2];d[i+3]=255;
-   } else {
-     d[i+3]=0;
-   }
+      if(mode==="erase"){
+        d[i+3]=0;
+      }else{
+        d[i]=o[i];
+        d[i+1]=o[i+1];
+        d[i+2]=o[i+2];
+        d[i+3]=o[i+3];
+      }
+    }
   }
- }
- draw();
-}
-
-function magic(x,y){
- if(!current)return; save();
- const w=canvas.width,h=canvas.height,d=current.data;
- const rng=Number(brush.value)*4,tol=Number(magicTol.value)*3;
- const i0=(y*w+x)*4, rr=d[i0],gg=d[i0+1],bb=d[i0+2];
-
- for(let yy=y-rng;yy<=y+rng;yy++){
-  if(yy<0||yy>=h)continue;
-  for(let xx=x-rng;xx<=x+rng;xx++){
-   if(xx<0||xx>=w)continue;
-   if((xx-x)**2+(yy-y)**2>rng*rng)continue;
-   const i=(yy*w+xx)*4;
-   if(dist(d,i,rr,gg,bb)<tol)d[i+3]=0;
-  }
- }
- draw();
+  draw();
 }
 
 canvas.onpointerdown=e=>{
- if(!current)return;
- const p=pos(e);
- if(mode.value==="magic"){magic(p.x,p.y);return}
- save();
- painting=true;
- paint(p.x,p.y,mode.value==="restore");
+  if(!current)return;
+  save();
+  painting=true;
+  const p=pos(e);
+  paint(p.x,p.y);
 };
 
 canvas.onpointermove=e=>{
- if(!painting)return;
- const p=pos(e);
- paint(p.x,p.y,mode.value==="restore");
+  if(!painting)return;
+  const p=pos(e);
+  paint(p.x,p.y);
 };
 
 window.onpointerup=()=>painting=false;
 
-function applyOutlineShadow(){
- if(!current)return; save();
-
- const w=canvas.width,h=canvas.height;
- const o=Number(outline.value),s=Number(shadow.value);
-
- const src=document.createElement("canvas");
- src.width=w; src.height=h;
- src.getContext("2d").putImageData(current,0,0);
-
- const out=document.createElement("canvas");
- out.width=w+o*2+s*2;
- out.height=h+o*2+s*2;
- const c=out.getContext("2d");
- const ox=o+s, oy=o+s;
-
- if(s>0){
-   c.save();
-   c.filter=`blur(${Math.round(s/2)}px)`;
-   c.globalAlpha=.75;
-   c.drawImage(src,ox+s/2,oy+s/2);
-   c.globalCompositeOperation="source-in";
-   c.fillStyle="black";
-   c.fillRect(0,0,out.width,out.height);
-   c.restore();
- }
-
- const white=document.createElement("canvas");
- white.width=w; white.height=h;
- const wc=white.getContext("2d");
- wc.drawImage(src,0,0);
- wc.globalCompositeOperation="source-in";
- wc.fillStyle="white";
- wc.fillRect(0,0,w,h);
-
- for(let a=0;a<360;a+=6){
-   const rad=a*Math.PI/180;
-   for(let r=2;r<=o;r+=3){
-     c.drawImage(white,ox+Math.cos(rad)*r,oy+Math.sin(rad)*r);
-   }
- }
-
- c.drawImage(src,ox,oy);
-
- canvas.width=out.width;
- canvas.height=out.height;
- ctx.clearRect(0,0,canvas.width,canvas.height);
- ctx.drawImage(out,0,0);
-
- current=ctx.getImageData(0,0,canvas.width,canvas.height);
- original=new ImageData(new Uint8ClampedArray(current.data),current.width,current.height);
- history=[];
-}
-
-document.getElementById("autoRemove").onclick=autoBackgroundRemove;
-document.getElementById("applyFx").onclick=applyOutlineShadow;
-
 document.getElementById("undo").onclick=()=>{
- const p=history.pop();
- if(p){current=p;draw()}
+  const p=history.pop();
+  if(p){
+    current=p;
+    draw();
+  }
 };
 
 document.getElementById("reset").onclick=()=>{
- if(original){
-   save();
-   current=new ImageData(new Uint8ClampedArray(original.data),original.width,original.height);
-   draw();
- }
+  if(!original)return;
+  save();
+  current=new ImageData(new Uint8ClampedArray(original.data),original.width,original.height);
+  draw();
+  setStatus("リセットしました");
+};
+
+document.getElementById("applyFx").onclick=()=>{
+  if(!current)return;
+  save();
+
+  const w=canvas.width,h=canvas.height;
+  const outline=Number(document.getElementById("outline").value);
+  const shadow=Number(document.getElementById("shadow").value);
+
+  const src=document.createElement("canvas");
+  src.width=w;src.height=h;
+  src.getContext("2d").putImageData(current,0,0);
+
+  const out=document.createElement("canvas");
+  out.width=w+outline*2+shadow*2;
+  out.height=h+outline*2+shadow*2;
+  const c=out.getContext("2d");
+
+  const ox=outline+shadow;
+  const oy=outline+shadow;
+
+  if(shadow>0){
+    c.save();
+    c.filter=`blur(${Math.round(shadow/2)}px)`;
+    c.globalAlpha=0.75;
+    c.drawImage(src,ox+shadow/2,oy+shadow/2);
+    c.globalCompositeOperation="source-in";
+    c.fillStyle="black";
+    c.fillRect(0,0,out.width,out.height);
+    c.restore();
+  }
+
+  const white=document.createElement("canvas");
+  white.width=w;white.height=h;
+  const wc=white.getContext("2d");
+  wc.drawImage(src,0,0);
+  wc.globalCompositeOperation="source-in";
+  wc.fillStyle="white";
+  wc.fillRect(0,0,w,h);
+
+  for(let a=0;a<360;a+=5){
+    const rad=a*Math.PI/180;
+    for(let r=2;r<=outline;r+=3){
+      c.drawImage(white,ox+Math.cos(rad)*r,oy+Math.sin(rad)*r);
+    }
+  }
+
+  c.drawImage(src,ox,oy);
+
+  canvas.width=out.width;
+  canvas.height=out.height;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(out,0,0);
+
+  current=ctx.getImageData(0,0,canvas.width,canvas.height);
+  original=new ImageData(new Uint8ClampedArray(current.data),current.width,current.height);
+  history=[];
+  setStatus("白フチ＋黒影を追加しました");
 };
 
 document.getElementById("download").onclick=()=>{
- const a=document.createElement("a");
- a.download="character_cutout.png";
- a.href=canvas.toDataURL("image/png");
- a.click();
+  const a=document.createElement("a");
+  a.download="character_cutout_ai.png";
+  a.href=canvas.toDataURL("image/png");
+  a.click();
 };
 </script>
 </body>
