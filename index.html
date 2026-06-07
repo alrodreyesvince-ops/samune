@@ -78,9 +78,7 @@ background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
 </section>
 </main>
 
-<script type="module">
-import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.mjs";
-
+<script>
 const file=document.getElementById("file");
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d",{willReadFrequently:true});
@@ -91,28 +89,37 @@ let current=null;
 let history=[];
 let mode="erase";
 let painting=false;
+let loadedFile=null;
 
-function setStatus(t){statusEl.textContent=t}
+function setStatus(t){statusEl.textContent=t;}
 
 file.onchange=e=>{
-  const f=e.target.files[0];
-  if(!f)return;
+  loadedFile=e.target.files[0];
+  if(!loadedFile)return;
 
   const img=new Image();
   img.onload=()=>{
     const max=1800;
     const scale=Math.min(1,max/img.width);
+
     canvas.width=Math.round(img.width*scale);
     canvas.height=Math.round(img.height*scale);
+
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
     original=ctx.getImageData(0,0,canvas.width,canvas.height);
     current=ctx.getImageData(0,0,canvas.width,canvas.height);
     history=[];
+
     setStatus("画像読み込み完了。AI背景削除を押してください。");
   };
-  img.src=URL.createObjectURL(f);
+
+  img.onerror=()=>{
+    setStatus("画像読み込みに失敗しました。別の画像で試してください。");
+  };
+
+  img.src=URL.createObjectURL(loadedFile);
 };
 
 function save(){
@@ -122,41 +129,87 @@ function save(){
 }
 
 function draw(){
-  ctx.putImageData(current,0,0);
+  if(current)ctx.putImageData(current,0,0);
+}
+
+async function loadRemoveBg(){
+  const urls=[
+    "https://esm.sh/@imgly/background-removal",
+    "https://esm.run/@imgly/background-removal",
+    "https://cdn.jsdelivr.net/npm/@imgly/background-removal/dist/browser.mjs"
+  ];
+
+  for(const url of urls){
+    try{
+      const mod=await import(url);
+      if(mod.removeBackground)return mod.removeBackground;
+    }catch(e){
+      console.warn("AI読み込み失敗:",url,e);
+    }
+  }
+
+  throw new Error("AI背景削除ライブラリを読み込めませんでした");
 }
 
 document.getElementById("aiCut").onclick=async()=>{
-  const f=file.files[0];
-  if(!f){
+  if(!loadedFile){
     alert("先に画像を読み込んでください");
     return;
   }
 
   save();
-  setStatus("AI背景削除中... 初回は時間がかかります");
+  setStatus("AI背景削除を読み込み中... 初回は時間がかかります");
 
   try{
-    const blob=await removeBackground(f);
+    const removeBackground=await loadRemoveBg();
+
+    setStatus("AI背景削除中... しばらく待ってください");
+
+    const blob=await removeBackground(loadedFile);
+
     const img=new Image();
     img.onload=()=>{
       canvas.width=img.width;
       canvas.height=img.height;
+
       ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.drawImage(img,0,0);
 
       current=ctx.getImageData(0,0,canvas.width,canvas.height);
-      original=new ImageData(new Uint8ClampedArray(current.data),current.width,current.height);
-      setStatus("AI背景削除完了。必要ならブラシで微調整してください。");
+
+      // 復元ブラシ用に、元画像を同じサイズで保持
+      const originalCanvas=document.createElement("canvas");
+      originalCanvas.width=img.width;
+      originalCanvas.height=img.height;
+      const octx=originalCanvas.getContext("2d");
+
+      const srcImg=new Image();
+      srcImg.onload=()=>{
+        octx.drawImage(srcImg,0,0,img.width,img.height);
+        original=octx.getImageData(0,0,img.width,img.height);
+        setStatus("AI背景削除完了。必要ならブラシで調整してください。");
+      };
+      srcImg.src=URL.createObjectURL(loadedFile);
     };
+
     img.src=URL.createObjectURL(blob);
+
   }catch(err){
     console.error(err);
-    setStatus("AI背景削除に失敗しました。ネット接続かブラウザを確認してください。");
+    setStatus("AI背景削除に失敗しました。GitHub Pages上で開いているか確認してください。");
+    alert("AI背景削除に失敗しました。ローカル直開きではなく、GitHub Pagesで開いて試してください。");
   }
 };
 
-document.getElementById("eraseMode").onclick=()=>{mode="erase";setStatus("消しゴムモード")};
-document.getElementById("restoreMode").onclick=()=>{mode="restore";setStatus("復元ブラシモード")};
+document.getElementById("eraseMode").onclick=()=>{
+  mode="erase";
+  setStatus("消しゴムモード");
+};
+
+document.getElementById("restoreMode").onclick=()=>{
+  mode="restore";
+  setStatus("復元ブラシモード");
+};
 
 function pos(e){
   const r=canvas.getBoundingClientRect();
@@ -168,15 +221,20 @@ function pos(e){
 
 function paint(x,y){
   if(!current||!original)return;
+
   const size=Number(document.getElementById("brush").value);
-  const w=canvas.width,h=canvas.height;
-  const d=current.data,o=original.data;
+  const w=canvas.width;
+  const h=canvas.height;
+  const d=current.data;
+  const o=original.data;
 
   for(let yy=y-size;yy<=y+size;yy++){
     if(yy<0||yy>=h)continue;
+
     for(let xx=x-size;xx<=x+size;xx++){
       if(xx<0||xx>=w)continue;
       if((xx-x)**2+(yy-y)**2>size*size)continue;
+
       const i=(yy*w+xx)*4;
 
       if(mode==="erase"){
@@ -185,10 +243,11 @@ function paint(x,y){
         d[i]=o[i];
         d[i+1]=o[i+1];
         d[i+2]=o[i+2];
-        d[i+3]=o[i+3];
+        d[i+3]=255;
       }
     }
   }
+
   draw();
 }
 
@@ -206,7 +265,9 @@ canvas.onpointermove=e=>{
   paint(p.x,p.y);
 };
 
-window.onpointerup=()=>painting=false;
+window.onpointerup=()=>{
+  painting=false;
+};
 
 document.getElementById("undo").onclick=()=>{
   const p=history.pop();
@@ -228,19 +289,21 @@ document.getElementById("applyFx").onclick=()=>{
   if(!current)return;
   save();
 
-  const w=canvas.width,h=canvas.height;
+  const w=canvas.width;
+  const h=canvas.height;
   const outline=Number(document.getElementById("outline").value);
   const shadow=Number(document.getElementById("shadow").value);
 
   const src=document.createElement("canvas");
-  src.width=w;src.height=h;
+  src.width=w;
+  src.height=h;
   src.getContext("2d").putImageData(current,0,0);
 
   const out=document.createElement("canvas");
   out.width=w+outline*2+shadow*2;
   out.height=h+outline*2+shadow*2;
-  const c=out.getContext("2d");
 
+  const c=out.getContext("2d");
   const ox=outline+shadow;
   const oy=outline+shadow;
 
@@ -256,7 +319,9 @@ document.getElementById("applyFx").onclick=()=>{
   }
 
   const white=document.createElement("canvas");
-  white.width=w;white.height=h;
+  white.width=w;
+  white.height=h;
+
   const wc=white.getContext("2d");
   wc.drawImage(src,0,0);
   wc.globalCompositeOperation="source-in";
@@ -280,10 +345,16 @@ document.getElementById("applyFx").onclick=()=>{
   current=ctx.getImageData(0,0,canvas.width,canvas.height);
   original=new ImageData(new Uint8ClampedArray(current.data),current.width,current.height);
   history=[];
+
   setStatus("白フチ＋黒影を追加しました");
 };
 
 document.getElementById("download").onclick=()=>{
+  if(!current){
+    alert("先に画像を読み込んでください");
+    return;
+  }
+
   const a=document.createElement("a");
   a.download="character_cutout_ai.png";
   a.href=canvas.toDataURL("image/png");
