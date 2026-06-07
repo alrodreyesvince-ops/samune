@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>アルロッド用 サムネ素材メーカー</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#151515;color:#fff;font-family:system-ui,"Noto Sans JP",sans-serif}
+  header{padding:14px 18px;background:#202020;border-bottom:1px solid #333}
+  h1{font-size:20px;margin:0}
+  .wrap{display:grid;grid-template-columns:320px 1fr;gap:14px;padding:14px}
+  .panel{background:#222;border:1px solid #333;border-radius:12px;padding:14px}
+  label{display:block;margin-top:12px;font-weight:700}
+  input,button,select{width:100%;margin-top:6px;padding:10px;border-radius:8px;border:1px solid #555;background:#111;color:#fff}
+  button{cursor:pointer;font-weight:800;background:#ff8a00;color:#111;border:none}
+  button.secondary{background:#444;color:#fff}
+  button.danger{background:#d93025;color:#fff}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .hint{font-size:12px;color:#ccc;line-height:1.6}
+  #stageBox{position:relative;overflow:auto;background:#0d0d0d;border-radius:12px;border:1px solid #333;min-height:70vh}
+  canvas{display:block;margin:16px auto;background:
+    linear-gradient(45deg,#999 25%,transparent 25%),
+    linear-gradient(-45deg,#999 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#999 75%),
+    linear-gradient(-45deg,transparent 75%,#999 75%);
+    background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0;
+  }
+  .small{font-size:12px;color:#aaa}
+</style>
+</head>
+<body>
+<header>
+  <h1>アルロッド用 サムネ素材メーカー：切り抜き＋白フチ＋影</h1>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <label>画像を読み込み</label>
+    <input type="file" id="file" accept="image/*">
+
+    <label>モード</label>
+    <select id="mode">
+      <option value="erase">消しゴム：背景を消す</option>
+      <option value="restore">復元ブラシ：キャラを戻す</option>
+      <option value="magic">クリック周辺の近い色を消す</option>
+    </select>
+
+    <label>ブラシサイズ</label>
+    <input type="range" id="brush" min="5" max="120" value="35">
+    <div class="small">現在: <span id="brushVal">35</span>px</div>
+
+    <label>白フチサイズ</label>
+    <input type="range" id="outline" min="0" max="50" value="22">
+    <div class="small">現在: <span id="outlineVal">22</span>px</div>
+
+    <label>黒影</label>
+    <input type="range" id="shadow" min="0" max="40" value="16">
+    <div class="small">現在: <span id="shadowVal">16</span>px</div>
+
+    <label>色消しの強さ</label>
+    <input type="range" id="tolerance" min="5" max="120" value="38">
+    <div class="small">現在: <span id="tolVal">38</span></div>
+
+    <div class="row">
+      <button id="apply">白フチ反映</button>
+      <button class="secondary" id="undo">1つ戻す</button>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <button class="secondary" id="fit">表示を整える</button>
+      <button class="danger" id="reset">リセット</button>
+    </div>
+
+    <label>書き出し</label>
+    <button id="download">透過PNG保存</button>
+
+    <p class="hint">
+      使い方：画像を入れる → 消しゴムで背景を消す → 消しすぎたら復元ブラシ → 白フチ反映 → PNG保存。<br>
+      「クリック周辺の近い色を消す」は、背景の灰色や空などをまとめて消したい時に使えます。
+    </p>
+  </div>
+
+  <div id="stageBox" class="panel">
+    <canvas id="canvas"></canvas>
+  </div>
+</div>
+
+<script>
+const file = document.getElementById('file');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { willReadFrequently:true });
+const modeEl = document.getElementById('mode');
+const brushEl = document.getElementById('brush');
+const outlineEl = document.getElementById('outline');
+const shadowEl = document.getElementById('shadow');
+const tolEl = document.getElementById('tolerance');
+let original = null;
+let current = null;
+let history = [];
+let drawing = false;
+
+function updateLabels(){
+  brushVal.textContent = brushEl.value;
+  outlineVal.textContent = outlineEl.value;
+  shadowVal.textContent = shadowEl.value;
+  tolVal.textContent = tolEl.value;
+}
+[brushEl, outlineEl, shadowEl, tolEl].forEach(e=>e.addEventListener('input',updateLabels));
+updateLabels();
+
+file.addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const img = new Image();
+  img.onload = ()=>{
+    const maxW = 1600;
+    const scale = Math.min(1, maxW / img.width);
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    original = ctx.getImageData(0,0,canvas.width,canvas.height);
+    current = ctx.getImageData(0,0,canvas.width,canvas.height);
+    history = [];
+  };
+  img.src = URL.createObjectURL(f);
+});
+
+function saveHistory(){
+  if(!current) return;
+  history.push(new ImageData(new Uint8ClampedArray(current.data), current.width, current.height));
+  if(history.length > 20) history.shift();
+}
+
+function getPos(e){
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: Math.round((e.clientX - r.left) * canvas.width / r.width),
+    y: Math.round((e.clientY - r.top) * canvas.height / r.height)
+  };
+}
+
+function brush(x,y,restore=false){
+  if(!current) return;
+  const r = Number(brushEl.value);
+  const data = current.data;
+  const orig = original.data;
+  for(let yy=y-r; yy<=y+r; yy++){
+    if(yy<0||yy>=canvas.height) continue;
+    for(let xx=x-r; xx<=x+r; xx++){
+      if(xx<0||xx>=canvas.width) continue;
+      const dx=xx-x, dy=yy-y;
+      if(dx*dx+dy*dy > r*r) continue;
+      const i=(yy*canvas.width+xx)*4;
+      if(restore){
+        data[i]=orig[i]; data[i+1]=orig[i+1]; data[i+2]=orig[i+2]; data[i+3]=255;
+      } else {
+        data[i+3]=0;
+      }
+    }
+  }
+  ctx.putImageData(current,0,0);
+}
+
+function magicErase(x,y){
+  if(!current) return;
+  saveHistory();
+  const data = current.data;
+  const idx=(y*canvas.width+x)*4;
+  const tr=data[idx], tg=data[idx+1], tb=data[idx+2];
+  const tol=Number(tolEl.value);
+  const r=Number(brushEl.value)*3;
+  for(let yy=y-r; yy<=y+r; yy++){
+    if(yy<0||yy>=canvas.height) continue;
+    for(let xx=x-r; xx<=x+r; xx++){
+      if(xx<0||xx>=canvas.width) continue;
+      const dx=xx-x, dy=yy-y;
+      if(dx*dx+dy*dy > r*r) continue;
+      const i=(yy*canvas.width+xx)*4;
+      const d=Math.abs(data[i]-tr)+Math.abs(data[i+1]-tg)+Math.abs(data[i+2]-tb);
+      if(d < tol*3) data[i+3]=0;
+    }
+  }
+  ctx.putImageData(current,0,0);
+}
+
+canvas.addEventListener('pointerdown', e=>{
+  if(!current) return;
+  const p=getPos(e);
+  if(modeEl.value === 'magic'){ magicErase(p.x,p.y); return; }
+  saveHistory();
+  drawing=true;
+  brush(p.x,p.y,modeEl.value==='restore');
+});
+canvas.addEventListener('pointermove', e=>{
+  if(!drawing) return;
+  const p=getPos(e);
+  brush(p.x,p.y,modeEl.value==='restore');
+});
+window.addEventListener('pointerup', ()=>drawing=false);
+
+document.getElementById('undo').onclick=()=>{
+  const prev=history.pop();
+  if(prev){ current=prev; ctx.putImageData(current,0,0); }
+};
+
+document.getElementById('reset').onclick=()=>{
+  if(original){
+    saveHistory();
+    current = new ImageData(new Uint8ClampedArray(original.data), original.width, original.height);
+    ctx.putImageData(current,0,0);
+  }
+};
+
+document.getElementById('fit').onclick=()=>canvas.scrollIntoView({behavior:'smooth',block:'center'});
+
+function makeOutlined(){
+  if(!current) return null;
+  const w=canvas.width,h=canvas.height;
+  const o=Number(outlineEl.value);
+  const s=Number(shadowEl.value);
+  const src=current.data;
+  const alpha = new Uint8Array(w*h);
+  for(let i=0,p=0;i<src.length;i+=4,p++) alpha[p]=src[i+3]>10?1:0;
+
+  const outCanvas=document.createElement('canvas');
+  outCanvas.width=w+o*2+s*2;
+  outCanvas.height=h+o*2+s*2;
+  const octx=outCanvas.getContext('2d');
+  const ox=o+s, oy=o+s;
+
+  // shadow
+  if(s>0){
+    octx.save();
+    octx.filter=`blur(${Math.round(s/2)}px)`;
+    octx.globalAlpha=0.75;
+    octx.fillStyle='black';
+    for(let y=0;y<h;y+=2){
+      for(let x=0;x<w;x+=2){
+        if(alpha[y*w+x]) octx.fillRect(ox+x+s/2,oy+y+s/2,3,3);
+      }
+    }
+    octx.restore();
+  }
+
+  // white outline by repeated offsets
+  const temp=document.createElement('canvas');
+  temp.width=w; temp.height=h;
+  temp.getContext('2d').putImageData(current,0,0);
+
+  octx.save();
+  octx.fillStyle='white';
+  const maskCanvas=document.createElement('canvas');
+  maskCanvas.width=w; maskCanvas.height=h;
+  const mctx=maskCanvas.getContext('2d');
+  mctx.drawImage(temp,0,0);
+  mctx.globalCompositeOperation='source-in';
+  mctx.fillStyle='white';
+  mctx.fillRect(0,0,w,h);
+  for(let a=0; a<360; a+=8){
+    const rad=a*Math.PI/180;
+    for(let rr=2; rr<=o; rr+=4){
+      octx.drawImage(maskCanvas, ox+Math.cos(rad)*rr, oy+Math.sin(rad)*rr);
+    }
+  }
+  octx.restore();
+
+  // original
+  octx.drawImage(temp, ox, oy);
+  return outCanvas;
+}
+
+document.getElementById('apply').onclick=()=>{
+  const out=makeOutlined();
+  if(!out) return;
+  canvas.width=out.width; canvas.height=out.height;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(out,0,0);
+  original = ctx.getImageData(0,0,canvas.width,canvas.height);
+  current = ctx.getImageData(0,0,canvas.width,canvas.height);
+  history=[];
+};
+
+document.getElementById('download').onclick=()=>{
+  const a=document.createElement('a');
+  a.download='cutout_white_outline.png';
+  a.href=canvas.toDataURL('image/png');
+  a.click();
+};
+</script>
+</body>
+</html>
