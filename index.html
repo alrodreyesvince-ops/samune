@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>アルロッド素材作成ツール V3 Checkbox</title>
+<title>アルロッド素材作成ツール V3 BG Toggle</title>
 <style>
 :root{--bg:#151515;--panel:#222;--line:#3a3a3a;--text:#fff;--muted:#bbb;--accent:#ff9800;--danger:#d93025}
 *{box-sizing:border-box}
@@ -13,7 +13,7 @@ h1{font-size:20px;margin:0}.badge{font-size:12px;background:#333;padding:4px 8px
 main{height:calc(100vh - 58px);display:grid;grid-template-columns:350px 1fr;gap:14px;padding:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
 .controls{overflow:auto}label{display:block;margin-top:13px;font-size:14px;font-weight:800}
-input,button{width:100%;margin-top:6px;padding:10px;border-radius:9px;border:1px solid #555;background:#111;color:white}
+input,button,select{width:100%;margin-top:6px;padding:10px;border-radius:9px;border:1px solid #555;background:#111;color:white}
 button{border:0;background:var(--accent);color:#111;font-weight:900;cursor:pointer}button.secondary{background:#444;color:white}.danger{background:var(--danger)!important;color:white!important}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 small,.hint{color:var(--muted);font-size:12px;line-height:1.55}.value{float:right;color:#ffd28a;font-weight:900}
@@ -21,14 +21,23 @@ small,.hint{color:var(--muted);font-size:12px;line-height:1.55}.value{float:righ
 .checkRow input{width:auto;margin:0;transform:scale(1.35)}.checkRow label{margin:0;font-size:14px}
 #status{margin-top:12px;padding:10px;border:1px solid #444;border-radius:10px;background:#111;color:#ffd28a;font-weight:800;font-size:13px;line-height:1.5}
 #stage{padding:0;overflow:hidden}#canvasWrap{width:100%;height:100%;overflow:auto;background:#101010}
-canvas{display:block;margin:24px auto;background:linear-gradient(45deg,#777 25%,transparent 25%),linear-gradient(-45deg,#777 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#777 75%),linear-gradient(-45deg,transparent 75%,#777 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0;box-shadow:0 10px 30px rgba(0,0,0,.35);transform-origin:center center;touch-action:none}
+canvas{display:block;margin:24px auto;box-shadow:0 10px 30px rgba(0,0,0,.35);transform-origin:center center;touch-action:none}
+.canvasTransparent{
+  background:
+    linear-gradient(45deg,#777 25%,transparent 25%),
+    linear-gradient(-45deg,#777 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#777 75%),
+    linear-gradient(-45deg,transparent 75%,#777 75%);
+  background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0;
+}
+.canvasWhite{background:#fff}
 .modeOn{outline:3px solid #ffd28a}hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 .kbd{display:inline-block;background:#111;border:1px solid #555;border-bottom-width:2px;border-radius:5px;padding:1px 5px;font-size:11px;color:#eee}
 @media(max-width:900px){main{grid-template-columns:1fr;height:auto}#stage{height:70vh}}
 </style>
 </head>
 <body>
-<header><h1>アルロッド素材作成ツール</h1><span class="badge">V3 Checkbox</span></header>
+<header><h1>アルロッド素材作成ツール</h1><span class="badge">V3 BG Toggle</span></header>
 
 <main>
 <section class="panel controls">
@@ -72,10 +81,18 @@ canvas{display:block;margin:24px auto;background:linear-gradient(45deg,#777 25%,
 <label>影のズレ <span class="value" id="shadowOffsetVal">10px</span></label>
 <input type="range" id="shadowOffset" min="0" max="50" value="10">
 
-<p class="hint">チェックを入れた効果だけプレビュー・保存に反映されます。背景削除とブラシ調整が終わってからONにするのがおすすめです。</p>
+<p class="hint">チェックを入れた効果だけプレビュー・保存に反映されます。</p>
 
 <hr>
-<label>4. 表示</label>
+<label>4. 背景プレビュー</label>
+<div class="row">
+<button class="secondary modeOn" id="bgTransparent">透過表示</button>
+<button class="secondary" id="bgWhite">真っ白表示</button>
+</div>
+<p class="hint">黒影を確認したい時は「真っ白表示」が便利です。保存されるPNGは透過のままです。</p>
+
+<hr>
+<label>5. 表示</label>
 <label>ズーム <span class="value" id="zoomVal">100%</span></label>
 <input type="range" id="zoom" min="20" max="250" value="100">
 <div class="row3" style="margin-top:10px">
@@ -85,13 +102,13 @@ canvas{display:block;margin:24px auto;background:linear-gradient(45deg,#777 25%,
 </div>
 
 <hr>
-<label>5. 保存</label>
+<label>6. 保存</label>
 <button id="download">透過PNG保存</button>
 <div id="status">画像を読み込んでください。</div>
 <p class="hint"><span class="kbd">Ctrl</span>+<span class="kbd">Z</span> 戻る / <span class="kbd">Ctrl</span>+<span class="kbd">Y</span> 進む / <span class="kbd">E</span> 消しゴム / <span class="kbd">R</span> 復元</p>
 </section>
 
-<section id="stage" class="panel"><div id="canvasWrap"><canvas id="canvas"></canvas></div></section>
+<section id="stage" class="panel"><div id="canvasWrap"><canvas id="canvas" class="canvasTransparent"></canvas></div></section>
 </main>
 
 <script type="module">
@@ -123,6 +140,16 @@ function updateLabels(){
   $("shadowOffsetVal").textContent=$("shadowOffset").value+"px"; $("zoomVal").textContent=$("zoom").value+"%";
 }
 ["brush","outline","shadow","shadowAlpha","shadowOffset","zoom"].forEach(id=>$(id).addEventListener("input",updateLabels)); updateLabels();
+
+function setPreviewBackground(type){
+  canvas.classList.toggle("canvasTransparent", type==="transparent");
+  canvas.classList.toggle("canvasWhite", type==="white");
+  $("bgTransparent").classList.toggle("modeOn", type==="transparent");
+  $("bgWhite").classList.toggle("modeOn", type==="white");
+  setStatus(type==="white" ? "背景を真っ白表示にしました。保存PNGは透過のままです。" : "背景を透過チェック表示にしました。");
+}
+$("bgTransparent").onclick=()=>setPreviewBackground("transparent");
+$("bgWhite").onclick=()=>setPreviewBackground("white");
 
 function applyZoom(){canvas.style.transform=`scale(${Number($("zoom").value)/100})`;updateLabels();}
 $("zoom").addEventListener("input",applyZoom);
