@@ -90,6 +90,7 @@ let history=[];
 let mode="erase";
 let painting=false;
 let loadedFile=null;
+let editBase=null;
 
 function setStatus(t){statusEl.textContent=t;}
 
@@ -129,7 +130,15 @@ function save(){
 }
 
 function draw(){
-  if(current)ctx.putImageData(current,0,0);
+  if(!current)return;
+
+  editBase = new ImageData(
+    new Uint8ClampedArray(current.data),
+    current.width,
+    current.height
+  );
+
+  redrawWithFx();
 }
 
 async function loadRemoveBg(){
