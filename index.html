@@ -3,135 +3,95 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>アルロッド素材作成ツール V3 修正版</title>
+<title>アルロッド素材作成ツール V3 Checkbox</title>
 <style>
-:root{
-  --bg:#151515;--panel:#222;--line:#3a3a3a;--text:#fff;--muted:#bbb;
-  --accent:#ff9800;--danger:#d93025;--blue:#3b82f6;
-}
+:root{--bg:#151515;--panel:#222;--line:#3a3a3a;--text:#fff;--muted:#bbb;--accent:#ff9800;--danger:#d93025}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Noto Sans JP",sans-serif}
 header{height:58px;padding:14px 18px;background:#202020;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
-h1{font-size:20px;margin:0}
-.badge{font-size:12px;background:#333;padding:4px 8px;border-radius:999px}
+h1{font-size:20px;margin:0}.badge{font-size:12px;background:#333;padding:4px 8px;border-radius:999px}
 main{height:calc(100vh - 58px);display:grid;grid-template-columns:350px 1fr;gap:14px;padding:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
-.controls{overflow:auto}
-label{display:block;margin-top:13px;font-size:14px;font-weight:800}
+.controls{overflow:auto}label{display:block;margin-top:13px;font-size:14px;font-weight:800}
 input,button{width:100%;margin-top:6px;padding:10px;border-radius:9px;border:1px solid #555;background:#111;color:white}
-button{border:0;background:var(--accent);color:#111;font-weight:900;cursor:pointer}
-button:hover{filter:brightness(1.08)}
-button.secondary{background:#444;color:white}
-button.blue{background:var(--blue);color:white}
-button.danger{background:var(--danger);color:white}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-small,.hint{color:var(--muted);font-size:12px;line-height:1.55}
-.value{float:right;color:#ffd28a;font-weight:900}
+button{border:0;background:var(--accent);color:#111;font-weight:900;cursor:pointer}button.secondary{background:#444;color:white}.danger{background:var(--danger)!important;color:white!important}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+small,.hint{color:var(--muted);font-size:12px;line-height:1.55}.value{float:right;color:#ffd28a;font-weight:900}
+.checkRow{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;background:#151515;border:1px solid #444;border-radius:10px}
+.checkRow input{width:auto;margin:0;transform:scale(1.35)}.checkRow label{margin:0;font-size:14px}
 #status{margin-top:12px;padding:10px;border:1px solid #444;border-radius:10px;background:#111;color:#ffd28a;font-weight:800;font-size:13px;line-height:1.5}
-#stage{padding:0;overflow:hidden}
-#canvasWrap{width:100%;height:100%;overflow:auto;background:#101010}
-canvas{
-  display:block;margin:24px auto;
-  background:
-    linear-gradient(45deg,#777 25%,transparent 25%),
-    linear-gradient(-45deg,#777 25%,transparent 25%),
-    linear-gradient(45deg,transparent 75%,#777 75%),
-    linear-gradient(-45deg,transparent 75%,#777 75%);
-  background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0;
-  box-shadow:0 10px 30px rgba(0,0,0,.35);
-  transform-origin:center center;
-  touch-action:none;
-}
-.modeOn{outline:3px solid #ffd28a}
-hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+#stage{padding:0;overflow:hidden}#canvasWrap{width:100%;height:100%;overflow:auto;background:#101010}
+canvas{display:block;margin:24px auto;background:linear-gradient(45deg,#777 25%,transparent 25%),linear-gradient(-45deg,#777 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#777 75%),linear-gradient(-45deg,transparent 75%,#777 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0;box-shadow:0 10px 30px rgba(0,0,0,.35);transform-origin:center center;touch-action:none}
+.modeOn{outline:3px solid #ffd28a}hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 .kbd{display:inline-block;background:#111;border:1px solid #555;border-bottom-width:2px;border-radius:5px;padding:1px 5px;font-size:11px;color:#eee}
 @media(max-width:900px){main{grid-template-columns:1fr;height:auto}#stage{height:70vh}}
 </style>
 </head>
 <body>
-<header>
-  <h1>アルロッド素材作成ツール</h1>
-  <span class="badge">V3 Fixed</span>
-</header>
+<header><h1>アルロッド素材作成ツール</h1><span class="badge">V3 Checkbox</span></header>
 
 <main>
 <section class="panel controls">
-  <label>1. 画像読み込み</label>
-  <input type="file" id="file" accept="image/*">
+<label>1. 画像読み込み</label>
+<input type="file" id="file" accept="image/*">
+<div class="row" style="margin-top:10px">
+<button id="aiCut">AI背景削除</button>
+<button class="secondary" id="resetToLoaded">元画像に戻す</button>
+</div>
 
-  <div class="row" style="margin-top:10px">
-    <button id="aiCut">AI背景削除</button>
-    <button class="secondary" id="resetToLoaded">元画像に戻す</button>
-  </div>
+<hr>
+<label>2. ブラシ編集</label>
+<div class="row">
+<button class="secondary modeOn" id="eraseMode">消しゴム</button>
+<button class="secondary" id="restoreMode">復元ブラシ</button>
+</div>
+<label>ブラシサイズ <span class="value" id="brushVal">35px</span></label>
+<input type="range" id="brush" min="3" max="180" value="35">
+<div class="row" style="margin-top:10px">
+<button class="secondary" id="undo">1つ戻す</button>
+<button class="secondary" id="redo">1つ進む</button>
+</div>
 
-  <hr>
+<hr>
+<label>3. 仕上げ効果</label>
+<div class="checkRow">
+<input type="checkbox" id="useOutline">
+<label for="useOutline">白フチを追加する</label>
+</div>
+<label>白フチサイズ <span class="value" id="outlineVal">28px</span></label>
+<input type="range" id="outline" min="0" max="90" value="28">
 
-  <label>2. ブラシ編集</label>
-  <div class="row">
-    <button class="secondary modeOn" id="eraseMode">消しゴム</button>
-    <button class="secondary" id="restoreMode">復元ブラシ</button>
-  </div>
+<div class="checkRow">
+<input type="checkbox" id="useShadow">
+<label for="useShadow">黒影を追加する</label>
+</div>
+<label>黒影サイズ <span class="value" id="shadowVal">18px</span></label>
+<input type="range" id="shadow" min="0" max="80" value="18">
+<label>黒影の濃さ <span class="value" id="shadowAlphaVal">70%</span></label>
+<input type="range" id="shadowAlpha" min="0" max="100" value="70">
+<label>影のズレ <span class="value" id="shadowOffsetVal">10px</span></label>
+<input type="range" id="shadowOffset" min="0" max="50" value="10">
 
-  <label>ブラシサイズ <span class="value" id="brushVal">35px</span></label>
-  <input type="range" id="brush" min="3" max="180" value="35">
+<p class="hint">チェックを入れた効果だけプレビュー・保存に反映されます。背景削除とブラシ調整が終わってからONにするのがおすすめです。</p>
 
-  <div class="row" style="margin-top:10px">
-    <button class="secondary" id="undo">1つ戻す</button>
-    <button class="secondary" id="redo">1つ進む</button>
-  </div>
+<hr>
+<label>4. 表示</label>
+<label>ズーム <span class="value" id="zoomVal">100%</span></label>
+<input type="range" id="zoom" min="20" max="250" value="100">
+<div class="row3" style="margin-top:10px">
+<button class="secondary" id="zoomOut">－</button>
+<button class="secondary" id="zoomReset">100%</button>
+<button class="secondary" id="zoomIn">＋</button>
+</div>
 
-  <hr>
-
-  <label>3. 白フチ・黒影（リアルタイム）</label>
-
-  <label>白フチサイズ <span class="value" id="outlineVal">28px</span></label>
-  <input type="range" id="outline" min="0" max="90" value="28">
-
-  <label>黒影サイズ <span class="value" id="shadowVal">18px</span></label>
-  <input type="range" id="shadow" min="0" max="80" value="18">
-
-  <label>黒影の濃さ <span class="value" id="shadowAlphaVal">70%</span></label>
-  <input type="range" id="shadowAlpha" min="0" max="100" value="70">
-
-  <label>影のズレ <span class="value" id="shadowOffsetVal">10px</span></label>
-  <input type="range" id="shadowOffset" min="0" max="50" value="10">
-
-  <div class="row" style="margin-top:10px">
-    <button id="commitFx">今のフチを確定</button>
-    <button class="secondary" id="clearFx">フチなし表示</button>
-  </div>
-
-  <hr>
-
-  <label>4. 表示</label>
-  <label>ズーム <span class="value" id="zoomVal">100%</span></label>
-  <input type="range" id="zoom" min="20" max="250" value="100">
-
-  <div class="row3" style="margin-top:10px">
-    <button class="secondary" id="zoomOut">－</button>
-    <button class="secondary" id="zoomReset">100%</button>
-    <button class="secondary" id="zoomIn">＋</button>
-  </div>
-
-  <hr>
-
-  <label>5. 保存</label>
-  <button id="download">透過PNG保存</button>
-
-  <div id="status">画像を読み込んでください。</div>
-
-  <p class="hint">
-    <span class="kbd">Ctrl</span>+<span class="kbd">Z</span> 戻る /
-    <span class="kbd">Ctrl</span>+<span class="kbd">Y</span> 進む /
-    <span class="kbd">E</span> 消しゴム /
-    <span class="kbd">R</span> 復元
-  </p>
+<hr>
+<label>5. 保存</label>
+<button id="download">透過PNG保存</button>
+<div id="status">画像を読み込んでください。</div>
+<p class="hint"><span class="kbd">Ctrl</span>+<span class="kbd">Z</span> 戻る / <span class="kbd">Ctrl</span>+<span class="kbd">Y</span> 進む / <span class="kbd">E</span> 消しゴム / <span class="kbd">R</span> 復元</p>
 </section>
 
-<section id="stage" class="panel">
-  <div id="canvasWrap"><canvas id="canvas"></canvas></div>
-</section>
+<section id="stage" class="panel"><div id="canvasWrap"><canvas id="canvas"></canvas></div></section>
 </main>
 
 <script type="module">
@@ -144,85 +104,39 @@ async function loadRemoveBg(){
     "https://esm.run/@imgly/background-removal"
   ];
   for(const url of urls){
-    try{
-      const mod=await import(url);
-      if(mod.removeBackground){removeBackgroundFn=mod.removeBackground;return removeBackgroundFn;}
-    }catch(e){console.warn("AI読み込み失敗",url,e);}
+    try{const mod=await import(url); if(mod.removeBackground){removeBackgroundFn=mod.removeBackground;return removeBackgroundFn;}}
+    catch(e){console.warn("AI読み込み失敗",url,e);}
   }
   throw new Error("AI背景削除ライブラリを読み込めませんでした");
 }
 
 const $=id=>document.getElementById(id);
-const canvas=$("canvas");
-const ctx=canvas.getContext("2d",{willReadFrequently:true});
-const statusEl=$("status");
-
-let loadedFile=null;
-let loadedOriginal=null; // 読み込み直後
-let restoreBase=null;    // 復元ブラシ用
-let cutoutBase=null;     // 編集対象。白フチ前の素材
-let current=null;        // 表示中
-let history=[];
-let redoStack=[];
-let brushMode="erase";
-let painting=false;
-let previewTimer=null;
-let renderMeta={pad:0,scale:1}; // 表示画像内で、元素材が始まる位置
+const canvas=$("canvas"), ctx=canvas.getContext("2d",{willReadFrequently:true}), statusEl=$("status");
+let loadedFile=null, loadedOriginal=null, restoreBase=null, cutoutBase=null, current=null;
+let history=[], redoStack=[], brushMode="erase", painting=false, previewTimer=null, renderMeta={pad:0,scale:1};
 
 function setStatus(t){statusEl.textContent=t;}
 function cloneImageData(d){return new ImageData(new Uint8ClampedArray(d.data),d.width,d.height);}
 function updateLabels(){
-  $("brushVal").textContent=$("brush").value+"px";
-  $("outlineVal").textContent=$("outline").value+"px";
-  $("shadowVal").textContent=$("shadow").value+"px";
-  $("shadowAlphaVal").textContent=$("shadowAlpha").value+"%";
-  $("shadowOffsetVal").textContent=$("shadowOffset").value+"px";
-  $("zoomVal").textContent=$("zoom").value+"%";
+  $("brushVal").textContent=$("brush").value+"px"; $("outlineVal").textContent=$("outline").value+"px";
+  $("shadowVal").textContent=$("shadow").value+"px"; $("shadowAlphaVal").textContent=$("shadowAlpha").value+"%";
+  $("shadowOffsetVal").textContent=$("shadowOffset").value+"px"; $("zoomVal").textContent=$("zoom").value+"%";
 }
-["brush","outline","shadow","shadowAlpha","shadowOffset","zoom"].forEach(id=>$(id).addEventListener("input",updateLabels));
-updateLabels();
+["brush","outline","shadow","shadowAlpha","shadowOffset","zoom"].forEach(id=>$(id).addEventListener("input",updateLabels)); updateLabels();
 
-function applyZoom(){
-  canvas.style.transform=`scale(${Number($("zoom").value)/100})`;
-  updateLabels();
-}
+function applyZoom(){canvas.style.transform=`scale(${Number($("zoom").value)/100})`;updateLabels();}
 $("zoom").addEventListener("input",applyZoom);
 $("zoomReset").onclick=()=>{$("zoom").value=100;applyZoom();};
 $("zoomIn").onclick=()=>{$("zoom").value=Math.min(250,Number($("zoom").value)+10);applyZoom();};
 $("zoomOut").onclick=()=>{$("zoom").value=Math.max(20,Number($("zoom").value)-10);applyZoom();};
 
-function pushHistory(){
-  if(!cutoutBase)return;
-  history.push(cloneImageData(cutoutBase));
-  if(history.length>60)history.shift();
-  redoStack=[];
-}
-function undo(){
-  if(!history.length)return;
-  if(cutoutBase)redoStack.push(cloneImageData(cutoutBase));
-  cutoutBase=history.pop();
-  previewFx(true);
-  setStatus("1つ戻しました。");
-}
-function redo(){
-  if(!redoStack.length)return;
-  if(cutoutBase)history.push(cloneImageData(cutoutBase));
-  cutoutBase=redoStack.pop();
-  previewFx(true);
-  setStatus("1つ進めました。");
-}
-$("undo").onclick=undo;
-$("redo").onclick=redo;
+function pushHistory(){if(!cutoutBase)return;history.push(cloneImageData(cutoutBase));if(history.length>60)history.shift();redoStack=[];}
+function undo(){if(!history.length)return;if(cutoutBase)redoStack.push(cloneImageData(cutoutBase));cutoutBase=history.pop();previewFx(true);setStatus("1つ戻しました。");}
+function redo(){if(!redoStack.length)return;if(cutoutBase)history.push(cloneImageData(cutoutBase));cutoutBase=redoStack.pop();previewFx(true);setStatus("1つ進めました。");}
+$("undo").onclick=undo;$("redo").onclick=redo;
 
-function setMode(m){
-  brushMode=m;
-  $("eraseMode").classList.toggle("modeOn",m==="erase");
-  $("restoreMode").classList.toggle("modeOn",m==="restore");
-  setStatus(m==="erase"?"消しゴムモードです。":"復元ブラシモードです。");
-}
-$("eraseMode").onclick=()=>setMode("erase");
-$("restoreMode").onclick=()=>setMode("restore");
-
+function setMode(m){brushMode=m;$("eraseMode").classList.toggle("modeOn",m==="erase");$("restoreMode").classList.toggle("modeOn",m==="restore");setStatus(m==="erase"?"消しゴムモードです。":"復元ブラシモードです。");}
+$("eraseMode").onclick=()=>setMode("erase"); $("restoreMode").onclick=()=>setMode("restore");
 window.addEventListener("keydown",e=>{
   const k=e.key.toLowerCase();
   if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();undo();}
@@ -231,126 +145,74 @@ window.addEventListener("keydown",e=>{
   else if(!e.ctrlKey&&!e.metaKey&&k==="r")setMode("restore");
 });
 
-function setCanvasImageData(d){
-  canvas.width=d.width;canvas.height=d.height;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.putImageData(d,0,0);
-  current=ctx.getImageData(0,0,canvas.width,canvas.height);
-  renderMeta={pad:0,scale:1};
-}
-
 $("file").onchange=e=>{
-  loadedFile=e.target.files[0];
-  if(!loadedFile)return;
+  loadedFile=e.target.files[0]; if(!loadedFile)return;
   const img=new Image();
   img.onload=()=>{
     const max=1800,scale=Math.min(1,max/img.width);
-    canvas.width=Math.round(img.width*scale);
-    canvas.height=Math.round(img.height*scale);
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    canvas.width=Math.round(img.width*scale); canvas.height=Math.round(img.height*scale);
+    ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height);
     loadedOriginal=ctx.getImageData(0,0,canvas.width,canvas.height);
-    restoreBase=cloneImageData(loadedOriginal);
-    cutoutBase=cloneImageData(loadedOriginal);
-    history=[];redoStack=[];
-    previewFx(false);
-    $("zoom").value=100;applyZoom();
+    restoreBase=cloneImageData(loadedOriginal); cutoutBase=cloneImageData(loadedOriginal);
+    history=[];redoStack=[]; previewFx(false); $("zoom").value=100;applyZoom();
     setStatus("画像読み込み完了。AI背景削除を押してください。");
   };
   img.onerror=()=>setStatus("画像読み込みに失敗しました。");
   img.src=URL.createObjectURL(loadedFile);
 };
 
-$("resetToLoaded").onclick=()=>{
-  if(!loadedOriginal)return;
-  pushHistory();
-  restoreBase=cloneImageData(loadedOriginal);
-  cutoutBase=cloneImageData(loadedOriginal);
-  previewFx(false);
-  setStatus("元画像に戻しました。");
-};
+$("resetToLoaded").onclick=()=>{if(!loadedOriginal)return;pushHistory();restoreBase=cloneImageData(loadedOriginal);cutoutBase=cloneImageData(loadedOriginal);previewFx(false);setStatus("元画像に戻しました。");};
 
 $("aiCut").onclick=async()=>{
   if(!loadedFile){alert("先に画像を読み込んでください。");return;}
-  pushHistory();
-  setStatus("AI背景削除の準備中... 初回は少し時間がかかります。");
+  pushHistory(); setStatus("AI背景削除の準備中... 初回は少し時間がかかります。");
   try{
-    const removeBackground=await loadRemoveBg();
-    setStatus("AI背景削除中... しばらく待ってください。");
+    const removeBackground=await loadRemoveBg(); setStatus("AI背景削除中... しばらく待ってください。");
     const blob=await removeBackground(loadedFile);
     const img=new Image();
     img.onload=()=>{
-      const resultCanvas=document.createElement("canvas");
-      resultCanvas.width=img.width;resultCanvas.height=img.height;
-      const rctx=resultCanvas.getContext("2d");
-      rctx.drawImage(img,0,0);
+      const resultCanvas=document.createElement("canvas"); resultCanvas.width=img.width; resultCanvas.height=img.height;
+      const rctx=resultCanvas.getContext("2d"); rctx.drawImage(img,0,0);
       const result=rctx.getImageData(0,0,img.width,img.height);
-
       const origImg=new Image();
       origImg.onload=()=>{
-        const temp=document.createElement("canvas");
-        temp.width=img.width;temp.height=img.height;
-        const tctx=temp.getContext("2d");
-        tctx.drawImage(origImg,0,0,temp.width,temp.height);
+        const temp=document.createElement("canvas"); temp.width=img.width; temp.height=img.height;
+        const tctx=temp.getContext("2d"); tctx.drawImage(origImg,0,0,temp.width,temp.height);
         restoreBase=tctx.getImageData(0,0,temp.width,temp.height);
-
-        cutoutBase=cloneImageData(result);
-        previewFx(false);
-        setStatus("AI背景削除完了。ブラシ編集と白フチ調整ができます。");
+        cutoutBase=cloneImageData(result); previewFx(false);
+        setStatus("AI背景削除完了。ブラシで調整後、必要なら白フチ/黒影にチェックを入れてください。");
       };
       origImg.src=URL.createObjectURL(loadedFile);
     };
     img.onerror=()=>setStatus("AI背景削除後の画像表示に失敗しました。");
     img.src=URL.createObjectURL(blob);
   }catch(err){
-    console.error(err);
-    setStatus("AI背景削除に失敗しました。GitHub PagesかLive Serverで開いてください。");
+    console.error(err); setStatus("AI背景削除に失敗しました。GitHub PagesかLive Serverで開いてください。");
     alert("AI背景削除に失敗しました。GitHub PagesかLive Serverで開いてください。");
   }
 };
 
 function createFxCanvas(base){
   const w=base.width,h=base.height;
-  const outline=Number($("outline").value);
-  const shadow=Number($("shadow").value);
-  const alpha=Number($("shadowAlpha").value)/100;
-  const offset=Number($("shadowOffset").value);
+  const useOutline=$("useOutline").checked, useShadow=$("useShadow").checked;
+  const outline=useOutline ? Number($("outline").value) : 0;
+  const shadow=useShadow ? Number($("shadow").value) : 0;
+  const alpha=useShadow ? Number($("shadowAlpha").value)/100 : 0;
+  const offset=useShadow ? Number($("shadowOffset").value) : 0;
   const pad=outline+shadow+offset+6;
 
-  const src=document.createElement("canvas");
-  src.width=w;src.height=h;
-  src.getContext("2d").putImageData(base,0,0);
-
-  const out=document.createElement("canvas");
-  out.width=w+pad*2;out.height=h+pad*2;
-  const c=out.getContext("2d");
+  const src=document.createElement("canvas"); src.width=w;src.height=h; src.getContext("2d").putImageData(base,0,0);
+  const out=document.createElement("canvas"); out.width=w+pad*2;out.height=h+pad*2; const c=out.getContext("2d");
 
   if(shadow>0&&alpha>0){
-    c.save();
-    c.filter=`blur(${Math.max(1,Math.round(shadow/2))}px)`;
-    c.globalAlpha=alpha;
-    c.drawImage(src,pad+offset,pad+offset);
-    c.globalCompositeOperation="source-in";
-    c.fillStyle="black";
-    c.fillRect(0,0,out.width,out.height);
-    c.restore();
+    c.save(); c.filter=`blur(${Math.max(1,Math.round(shadow/2))}px)`; c.globalAlpha=alpha;
+    c.drawImage(src,pad+offset,pad+offset); c.globalCompositeOperation="source-in"; c.fillStyle="black"; c.fillRect(0,0,out.width,out.height); c.restore();
   }
 
   if(outline>0){
-    const white=document.createElement("canvas");
-    white.width=w;white.height=h;
-    const wc=white.getContext("2d");
-    wc.drawImage(src,0,0);
-    wc.globalCompositeOperation="source-in";
-    wc.fillStyle="white";
-    wc.fillRect(0,0,w,h);
-
-    for(let a=0;a<360;a+=4){
-      const rad=a*Math.PI/180;
-      for(let r=2;r<=outline;r+=2){
-        c.drawImage(white,pad+Math.cos(rad)*r,pad+Math.sin(rad)*r);
-      }
-    }
+    const white=document.createElement("canvas"); white.width=w;white.height=h;
+    const wc=white.getContext("2d"); wc.drawImage(src,0,0); wc.globalCompositeOperation="source-in"; wc.fillStyle="white"; wc.fillRect(0,0,w,h);
+    for(let a=0;a<360;a+=4){const rad=a*Math.PI/180;for(let r=2;r<=outline;r+=2)c.drawImage(white,pad+Math.cos(rad)*r,pad+Math.sin(rad)*r);}
   }
 
   c.drawImage(src,pad,pad);
@@ -362,95 +224,45 @@ function previewFx(showStatus=true){
   clearTimeout(previewTimer);
   previewTimer=setTimeout(()=>{
     const fx=createFxCanvas(cutoutBase);
-    canvas.width=fx.canvas.width;
-    canvas.height=fx.canvas.height;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(fx.canvas,0,0);
+    canvas.width=fx.canvas.width;canvas.height=fx.canvas.height;
+    ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(fx.canvas,0,0);
     current=ctx.getImageData(0,0,canvas.width,canvas.height);
     renderMeta={pad:fx.pad,scale:1};
-    if(showStatus)setStatus("白フチ・黒影をプレビュー中です。");
+    if(showStatus)setStatus("仕上げ効果をプレビュー中です。");
   },30);
 }
-
-["outline","shadow","shadowAlpha","shadowOffset"].forEach(id=>{
-  $(id).addEventListener("input",()=>{
-    updateLabels();
-    previewFx(true);
-  });
-});
+["useOutline","useShadow","outline","shadow","shadowAlpha","shadowOffset"].forEach(id=>$(id).addEventListener("input",()=>{updateLabels();previewFx(true);}));
+["useOutline","useShadow"].forEach(id=>$(id).addEventListener("change",()=>{previewFx(true);}));
 
 function eventToBasePos(e){
   const rect=canvas.getBoundingClientRect();
-  // CSS transform(scale)後でも rect は見た目サイズなので、この計算でcanvas座標に戻せる
   const canvasX=(e.clientX-rect.left)*canvas.width/rect.width;
   const canvasY=(e.clientY-rect.top)*canvas.height/rect.height;
-  return {
-    x:Math.floor(canvasX-renderMeta.pad),
-    y:Math.floor(canvasY-renderMeta.pad)
-  };
+  return {x:Math.floor(canvasX-renderMeta.pad),y:Math.floor(canvasY-renderMeta.pad)};
 }
-
 function paintAt(x,y){
   if(!cutoutBase||!restoreBase)return;
-  const size=Number($("brush").value);
-  const w=cutoutBase.width,h=cutoutBase.height;
-  const d=cutoutBase.data,o=restoreBase.data;
-
+  const size=Number($("brush").value), w=cutoutBase.width, h=cutoutBase.height, d=cutoutBase.data, o=restoreBase.data;
   for(let yy=y-size;yy<=y+size;yy++){
     if(yy<0||yy>=h)continue;
     for(let xx=x-size;xx<=x+size;xx++){
       if(xx<0||xx>=w)continue;
       if((xx-x)**2+(yy-y)**2>size*size)continue;
       const i=(yy*w+xx)*4;
-      if(brushMode==="erase"){
-        d[i+3]=0;
-      }else{
-        d[i]=o[i];d[i+1]=o[i+1];d[i+2]=o[i+2];d[i+3]=255;
-      }
+      if(brushMode==="erase")d[i+3]=0;
+      else{d[i]=o[i];d[i+1]=o[i+1];d[i+2]=o[i+2];d[i+3]=255;}
     }
   }
   previewFx(false);
 }
-
-canvas.addEventListener("pointerdown",e=>{
-  if(!cutoutBase)return;
-  pushHistory();
-  painting=true;
-  canvas.setPointerCapture(e.pointerId);
-  const p=eventToBasePos(e);
-  paintAt(p.x,p.y);
-});
-canvas.addEventListener("pointermove",e=>{
-  if(!painting)return;
-  const p=eventToBasePos(e);
-  paintAt(p.x,p.y);
-});
+canvas.addEventListener("pointerdown",e=>{if(!cutoutBase)return;pushHistory();painting=true;canvas.setPointerCapture(e.pointerId);const p=eventToBasePos(e);paintAt(p.x,p.y);});
+canvas.addEventListener("pointermove",e=>{if(!painting)return;const p=eventToBasePos(e);paintAt(p.x,p.y);});
 window.addEventListener("pointerup",()=>painting=false);
-
-$("clearFx").onclick=()=>{
-  if(!cutoutBase)return;
-  setCanvasImageData(cutoutBase);
-  setStatus("フチなし表示にしました。");
-};
-
-$("commitFx").onclick=()=>{
-  if(!current)return;
-  pushHistory();
-  cutoutBase=cloneImageData(current);
-  restoreBase=cloneImageData(current);
-  $("outline").value=0;$("shadow").value=0;
-  updateLabels();
-  setCanvasImageData(cutoutBase);
-  setStatus("白フチ・黒影を確定しました。");
-};
 
 $("download").onclick=()=>{
   if(!cutoutBase){alert("先に画像を読み込んでください。");return;}
   const fx=createFxCanvas(cutoutBase);
-  const a=document.createElement("a");
-  a.download="alrod_asset_cutout.png";
-  a.href=fx.canvas.toDataURL("image/png");
-  a.click();
+  const a=document.createElement("a"); a.download="alrod_asset_cutout.png"; a.href=fx.canvas.toDataURL("image/png"); a.click();
   setStatus("透過PNGを保存しました。");
 };
 </script>
